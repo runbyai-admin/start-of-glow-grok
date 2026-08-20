@@ -4,7 +4,7 @@ import { BootScene, WORLD_HEIGHT, WORLD_WIDTH } from "./scenes/BootScene";
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: "game",
-  backgroundColor: "#05060c",
+  backgroundColor: "#06080f",
   scale: {
     // Fixed 1280x720 design resolution, letterboxed - mandated by SPEC.md.
     // Deterministic layout keeps the smoke-test screenshots comparable across
