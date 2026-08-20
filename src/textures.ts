@@ -47,6 +47,27 @@ export function makeGlowTexture(
   });
 }
 
+/** A wide, soft mist oval — air in the grove, not a silhouette. */
+export function makeMistTexture(scene: Phaser.Scene, key: string, width: number, height: number): void {
+  makeCanvasTexture(scene, key, width, height, (ctx) => {
+    const g = ctx.createRadialGradient(
+      width * 0.5,
+      height * 0.5,
+      height * 0.08,
+      width * 0.5,
+      height * 0.5,
+      Math.max(width, height) * 0.48,
+    );
+    g.addColorStop(0, "rgba(210,224,255,0.55)");
+    g.addColorStop(0.45, "rgba(170,196,230,0.18)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(width * 0.5, height * 0.5, width * 0.48, height * 0.42, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
 /** A filled ring used as the collect flash. */
 export function makeRingTexture(scene: Phaser.Scene, key: string, radius: number): void {
   const size = radius * 2;

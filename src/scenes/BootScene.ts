@@ -7,6 +7,7 @@ import {
   makeGrassTexture,
   makeGroundTexture,
   makeHillTexture,
+  makeMistTexture,
   makeMoonTexture,
   makePineTexture,
   makeRingTexture,
@@ -44,6 +45,7 @@ export class BootScene extends Phaser.Scene {
   private collected = 0;
   private audio = new GlowAudio();
   private swaying: Phaser.GameObjects.Image[] = [];
+  private mists: Phaser.GameObjects.Image[] = [];
 
   constructor() {
     super("boot");
@@ -56,6 +58,7 @@ export class BootScene extends Phaser.Scene {
     makeGlowTexture(this, "pip", 10, "rgba(255,236,196,1)", "rgba(255,196,92,0.4)");
     makeRingTexture(this, "ring", 48);
     makeMoonTexture(this, "moon", 90);
+    makeMistTexture(this, "mist", 720, 180);
     makeVignetteTexture(this, "vignette", WORLD_WIDTH, WORLD_HEIGHT);
     makeHillTexture(this, "hills-far", WORLD_WIDTH, 280, 11);
     makeHillTexture(this, "hills-near", WORLD_WIDTH, 220, 23);
@@ -76,6 +79,7 @@ export class BootScene extends Phaser.Scene {
 
     this.buildSky();
     this.buildForest();
+    this.buildMist();
     this.buildShore();
     this.buildMotes();
     this.buildWisp();
@@ -105,6 +109,13 @@ export class BootScene extends Phaser.Scene {
       ease: "Sine.easeInOut",
     });
     this.lights.addLight(moon.x, moon.y, 520, 0x8ea4c8, 0.32);
+
+    this.add
+      .image(moon.x, moon.y + 90, "wisp")
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.14)
+      .setScale(1.6, 5.2)
+      .setDepth(-68);
 
     const rng = new Phaser.Math.RandomDataGenerator(["stars"]);
     for (let i = 0; i < 18; i += 1) {
@@ -183,6 +194,31 @@ export class BootScene extends Phaser.Scene {
       .setTint(0x222a38)
       .setDepth(-28);
     snag.setPipeline("Light2D");
+  }
+
+  private buildMist(): void {
+    const bands: Array<{ x: number; y: number; scale: number; alpha: number }> = [
+      { x: 520, y: 330, scale: 1.85, alpha: 0.07 },
+      { x: 980, y: 410, scale: 1.6, alpha: 0.05 },
+    ];
+    for (const band of bands) {
+      const mist = this.add
+        .image(band.x, band.y, "mist")
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(band.alpha)
+        .setScale(band.scale, 0.85)
+        .setDepth(-20);
+      this.mists.push(mist);
+      this.tweens.add({
+        targets: mist,
+        x: band.x + 36,
+        alpha: { from: band.alpha * 0.7, to: band.alpha },
+        duration: 7000 + band.y,
+        yoyo: true,
+        repeat: -1,
+        ease: "Sine.easeInOut",
+      });
+    }
   }
 
   private buildShore(): void {
@@ -442,21 +478,39 @@ export class BootScene extends Phaser.Scene {
       }
       this.motes.splice(i, 1);
       this.tweens.killTweensOf(mote);
-      this.trail.explode(20, mote.x, mote.y);
+      this.trail.explode(14, mote.x, mote.y);
+      const startX = mote.x;
+      const startY = mote.y;
+      mote.setDepth(11);
       const ring = this.add
-        .image(mote.x, mote.y, "ring")
+        .image(startX, startY, "ring")
         .setBlendMode(Phaser.BlendModes.ADD)
         .setDepth(12)
         .setScale(0.4);
       this.tweens.add({
         targets: ring,
-        scale: 2.6,
+        scale: 2.4,
         alpha: 0,
-        duration: 520,
+        duration: 560,
         ease: "Quad.easeOut",
         onComplete: () => ring.destroy(),
       });
-      mote.destroy();
+      this.tweens.add({
+        targets: mote,
+        scale: 0.12,
+        alpha: 0.15,
+        duration: 280,
+        ease: "Cubic.easeIn",
+        onUpdate: (tween) => {
+          const p = tween.progress;
+          mote.x = Phaser.Math.Linear(startX, this.wisp.x, p);
+          mote.y = Phaser.Math.Linear(startY, this.wisp.y, p);
+        },
+        onComplete: () => {
+          this.trail.explode(18, this.wisp.x, this.wisp.y);
+          mote.destroy();
+        },
+      });
       this.collected += 1;
       this.audio.unlock();
       this.audio.collect(this.collected);

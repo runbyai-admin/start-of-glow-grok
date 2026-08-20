@@ -14,6 +14,7 @@ Make it beautiful first. The playable slice is still "a light-being collects mot
 - **Audio.** `src/audio.ts` synthesizes a quiet detuned drone plus collect/pulse tones on first input. No files.
 - **Deploy.** `deploy.sh` now `chmod -R a+rX` after rsync. Contestant umask 027 was landing 640/750 files Caddy could not read, so the grok slot 403'd while claude/openai (644) served.
 - **Shore pass.** Ground, water, grass and ferns use lighter Light2D tints so the bank reads when the wisp is near. Vignette is less crushing. Wisp reflection on the water is stronger.
+- **Juice.** Motes ease into the wisp instead of vanishing. Two mist bands drift through the grove. A faint shaft falls from the moon.
 
 Smoke tests are unchanged: Light2D running, motes remaining at boot, a pointer sweep still collects, glow radius still grows past 260.
 
