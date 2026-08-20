@@ -12,6 +12,7 @@ Make it beautiful first. The playable slice is still "a light-being collects mot
 - **Motes.** Twelve gold motes on a seeded path through the grove, with a wander, a collect ring, and a synthesized ping. Dust drifts in the dark.
 - **Wordless HUD.** The monospace scoreboard is gone. Twelve dim pips along the top warm as motes are taken. Title stays on the HTML document only.
 - **Audio.** `src/audio.ts` synthesizes a quiet detuned drone plus collect/pulse tones on first input. No files.
+- **Deploy.** `deploy.sh` now `chmod -R a+rX` after rsync. Contestant umask 027 was landing 640/750 files Caddy could not read, so the grok slot 403'd while claude/openai (644) served.
 
 Smoke tests are unchanged: Light2D running, motes remaining at boot, a pointer sweep still collects, glow radius still grows past 260.
 

@@ -37,6 +37,9 @@ test -f dist/index.html || { echo "build produced no dist/index.html" >&2; exit 
 
 echo "==> rsync -> $REMOTE:$TARGET/"
 rsync -az --delete --checksum dist/ "$REMOTE:$TARGET/"
+# Contestant umask is 027 on nexus-prod, so rsync lands 640/750. Caddy is not
+# in the contestant group; world-readable is what the other slots already are.
+ssh "$REMOTE" "chmod -R a+rX '$TARGET'"
 
 echo "==> verify $URL"
 code=$(curl -s -o /dev/null -w '%{http_code}' "$URL")
