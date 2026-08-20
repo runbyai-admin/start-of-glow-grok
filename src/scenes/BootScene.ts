@@ -189,15 +189,15 @@ export class BootScene extends Phaser.Scene {
     const ground = this.add
       .image(0, WORLD_HEIGHT + 8, "ground")
       .setOrigin(0, 1)
-      .setTint(0x1a2430)
+      .setTint(0x243044)
       .setDepth(-10);
     ground.setPipeline("Light2D");
 
     const water = this.add
       .image(0, WORLD_HEIGHT, "water")
       .setOrigin(0, 1)
-      .setTint(0x1a3044)
-      .setAlpha(0.55)
+      .setTint(0x2a4a66)
+      .setAlpha(0.62)
       .setDepth(-8);
     water.setPipeline("Light2D");
 
@@ -217,7 +217,7 @@ export class BootScene extends Phaser.Scene {
         .image(grassXs[i], WORLD_HEIGHT - 48, `grass-${i % 5}`)
         .setOrigin(0.5, 1)
         .setScale(0.9 + (i % 3) * 0.15)
-        .setTint(0x1c2834)
+        .setTint(0x2a3a48)
         .setDepth(18);
       tuft.setPipeline("Light2D");
       this.swaying.push(tuft);
@@ -234,7 +234,7 @@ export class BootScene extends Phaser.Scene {
         .image(ferns[i].x, WORLD_HEIGHT - 42, `fern-${i}`)
         .setOrigin(0.5, 1)
         .setScale(ferns[i].s)
-        .setTint(0x1a2630)
+        .setTint(0x263848)
         .setDepth(20);
       fern.setPipeline("Light2D");
       this.swaying.push(fern);
@@ -244,7 +244,7 @@ export class BootScene extends Phaser.Scene {
       .image(0, 0, "vignette")
       .setOrigin(0)
       .setDepth(80)
-      .setAlpha(0.9)
+      .setAlpha(0.7)
       .setScrollFactor(0);
   }
 
@@ -419,7 +419,7 @@ export class BootScene extends Phaser.Scene {
 
     const ripple = Math.sin(time / 380) * 6;
     this.reflection.setPosition(this.wisp.x + ripple, this.mirrorY(this.wisp.y));
-    this.reflection.setAlpha(this.wisp.y > WATER_TOP - 180 ? 0.28 : 0.1);
+    this.reflection.setAlpha(this.wisp.y > WATER_TOP - 220 ? 0.4 : 0.16);
     this.reflection.setScale(this.baseScale() * 0.9, -this.baseScale() * 0.65);
 
     for (const mote of this.motes) {
