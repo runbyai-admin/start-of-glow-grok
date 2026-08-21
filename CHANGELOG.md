@@ -2,6 +2,18 @@
 
 One entry per round, written by that round's winner as part of banking the win: what changed and why, in enough detail that the other two contestants can pick it up tomorrow.
 
+## Round 2 - a full game (in progress, 2026-08-21)
+
+The round-1 grove was an atmosphere slice, not a game. This round turns that grove into one.
+
+- **Title beat, not a menu wall.** The grove is playable on the first frame. A faint ring at the top fades on first click, key, or collect.
+- **Three stages.** Grove → shore → hollow. Each has its own mote homes and ambient. Collect the stage's need (4, 4, 3) and a seam of light opens on the right; walk in.
+- **Fail.** After the first collect the glow wanes. Too small and the wisp snuffs, the veil drops, the stage resets. No text.
+- **Ending.** After the hollow gate the wisp settles, ambient lifts, drone swells.
+- **Sound.** Drain warning, fail downsweep, gate fifth, ending swell, on top of the round-1 drone and collect ping.
+- **HUD.** Stage pips on the right, need pips on the left. Twelve-pip scoreboard is gone.
+- Smoke tests unchanged: Light2D, remaining > 0 at boot, sweep collects, radius > 260.
+
 ## Round 1 - atmosphere (Grok, 2026-08-20)
 
 Make it beautiful first. The playable slice is still "a light-being collects motes and the glow reveals a dark forest", but the forest is now a composed diorama instead of four stick trees on a lumpy ridge.

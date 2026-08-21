@@ -20,17 +20,59 @@ import {
 export const WORLD_WIDTH = 1280;
 export const WORLD_HEIGHT = 720;
 
-const MOTE_COUNT = 12;
 const COLLECT_RADIUS = 48;
 const WATER_TOP = WORLD_HEIGHT - 86;
 const BASE_RADIUS = 250;
 const RADIUS_STEP = 42;
+const WANE_PER_SEC = 11;
+const SNUFF_RADIUS = 88;
+const GATE_X = 1224;
 
+type Phase = "title" | "play" | "failing" | "ending";
 type Mote = Phaser.GameObjects.Image & { homeX: number; homeY: number; phase: number };
 
+const STAGES: Array<{
+  ambient: number;
+  need: number;
+  homes: Array<[number, number]>;
+}> = [
+  {
+    ambient: 0x06080f,
+    need: 4,
+    homes: [
+      [180, 250],
+      [310, 360],
+      [420, 210],
+      [520, 430],
+      [610, 280],
+    ],
+  },
+  {
+    ambient: 0x071018,
+    need: 4,
+    homes: [
+      [240, 400],
+      [410, 220],
+      [640, 340],
+      [820, 180],
+      [980, 390],
+    ],
+  },
+  {
+    ambient: 0x04060c,
+    need: 3,
+    homes: [
+      [360, 260],
+      [640, 200],
+      [780, 380],
+      [960, 240],
+    ],
+  },
+];
+
 /**
- * Round 1 is an atmosphere slice: a dark forest, a small light-being, motes
- * that grow the glow. The world is silhouettes. Light is the camera.
+ * A full game on the round-1 atmosphere: three stages, a glow that can snuff,
+ * a reset, an ending. The grove is playable on the first frame — not a menu wall.
  */
 export class BootScene extends Phaser.Scene {
   private wisp!: Phaser.GameObjects.Image;
@@ -40,12 +82,25 @@ export class BootScene extends Phaser.Scene {
   private trail!: Phaser.GameObjects.Particles.ParticleEmitter;
   private motes: Mote[] = [];
   private pips: Phaser.GameObjects.Image[] = [];
+  private stagePips: Phaser.GameObjects.Image[] = [];
+  private titleMark!: Phaser.GameObjects.Image;
+  private gate!: Phaser.GameObjects.Image;
+  private gateLight!: Phaser.GameObjects.Light;
+  private veil!: Phaser.GameObjects.Rectangle;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private target = new Phaser.Math.Vector2(WORLD_WIDTH * 0.38, WORLD_HEIGHT * 0.58);
   private collected = 0;
+  private stageCollected = 0;
+  private stageIndex = 0;
+  private phase: Phase = "title";
+  private gateOpen = false;
+  private lastDrainAt = 0;
   private audio = new GlowAudio();
   private swaying: Phaser.GameObjects.Image[] = [];
   private mists: Phaser.GameObjects.Image[] = [];
+  private groveTrees: Phaser.GameObjects.Image[] = [];
+  private pineTrees: Phaser.GameObjects.Image[] = [];
+  private snag!: Phaser.GameObjects.Image;
 
   constructor() {
     super("boot");
@@ -81,9 +136,10 @@ export class BootScene extends Phaser.Scene {
     this.buildForest();
     this.buildMist();
     this.buildShore();
-    this.buildMotes();
     this.buildWisp();
+    this.buildGate();
     this.buildHud();
+    this.spawnStage(0, false);
     this.bindInput();
 
     this.events.once(Phaser.Scenes.Events.POST_UPDATE, () => this.announceReady());
@@ -168,6 +224,7 @@ export class BootScene extends Phaser.Scene {
         .setTint(p.tint)
         .setDepth(p.depth);
       tree.setPipeline("Light2D");
+      this.pineTrees.push(tree);
     }
 
     const grove: Array<{ x: number; scale: number; key: string; tint: number; depth: number }> = [
@@ -185,15 +242,16 @@ export class BootScene extends Phaser.Scene {
         .setTint(g.tint)
         .setDepth(g.depth);
       tree.setPipeline("Light2D");
+      this.groveTrees.push(tree);
     }
 
-    const snag = this.add
+    this.snag = this.add
       .image(300, WATER_TOP + 12, "snag")
       .setOrigin(0.5, 1)
       .setScale(0.7)
       .setTint(0x222a38)
       .setDepth(-28);
-    snag.setPipeline("Light2D");
+    this.snag.setPipeline("Light2D");
   }
 
   private buildMist(): void {
@@ -284,24 +342,17 @@ export class BootScene extends Phaser.Scene {
       .setScrollFactor(0);
   }
 
-  private buildMotes(): void {
-    // A gentle path through the grove, not a uniform scatter - still dense
-    // enough that a pointer sweep across the canvas collects at least one.
-    const homes: Array<[number, number]> = [
-      [180, 250],
-      [310, 360],
-      [420, 210],
-      [520, 430],
-      [610, 280],
-      [700, 190],
-      [780, 360],
-      [870, 240],
-      [960, 400],
-      [1080, 270],
-      [240, 480],
-      [1010, 500],
-    ];
-    for (let i = 0; i < MOTE_COUNT; i += 1) {
+  private clearMotes(): void {
+    for (const mote of this.motes) {
+      this.tweens.killTweensOf(mote);
+      mote.destroy();
+    }
+    this.motes = [];
+  }
+
+  private spawnMotes(homes: Array<[number, number]>): void {
+    this.clearMotes();
+    for (let i = 0; i < homes.length; i += 1) {
       const [hx, hy] = homes[i];
       const mote = this.add
         .image(hx, hy, "mote")
@@ -322,20 +373,6 @@ export class BootScene extends Phaser.Scene {
       });
       this.motes.push(mote);
     }
-
-    this.add.particles(0, 0, "spark", {
-      x: { min: 0, max: WORLD_WIDTH },
-      y: { min: 40, max: WATER_TOP },
-      speedY: { min: -6, max: 4 },
-      speedX: { min: -8, max: 8 },
-      lifespan: { min: 2800, max: 7000 },
-      scale: { start: 0.22, end: 0 },
-      alpha: { start: 0.28, end: 0 },
-      tint: [0xb7d4ff, 0xffe6a8, 0xffffff],
-      blendMode: Phaser.BlendModes.ADD,
-      frequency: 90,
-      quantity: 1,
-    }).setDepth(2);
   }
 
   private buildWisp(): void {
@@ -378,22 +415,76 @@ export class BootScene extends Phaser.Scene {
 
     this.wispLight = this.lights.addLight(this.wisp.x, this.wisp.y, BASE_RADIUS, 0xd4e8ff, 1.15);
     this.trail.startFollow(this.wisp);
+
+    this.add.particles(0, 0, "spark", {
+      x: { min: 0, max: WORLD_WIDTH },
+      y: { min: 40, max: WATER_TOP },
+      speedY: { min: -6, max: 4 },
+      speedX: { min: -8, max: 8 },
+      lifespan: { min: 2800, max: 7000 },
+      scale: { start: 0.22, end: 0 },
+      alpha: { start: 0.28, end: 0 },
+      tint: [0xb7d4ff, 0xffe6a8, 0xffffff],
+      blendMode: Phaser.BlendModes.ADD,
+      frequency: 90,
+      quantity: 1,
+    }).setDepth(2);
+  }
+
+  private buildGate(): void {
+    this.gate = this.add
+      .image(GATE_X, WORLD_HEIGHT * 0.48, "wisp")
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(0.35, 4.8)
+      .setAlpha(0)
+      .setDepth(6);
+    this.gateLight = this.lights.addLight(GATE_X, WORLD_HEIGHT * 0.5, 160, 0xc8dcff, 0);
+    this.veil = this.add
+      .rectangle(0, 0, WORLD_WIDTH, WORLD_HEIGHT, 0x020308, 0)
+      .setOrigin(0)
+      .setDepth(200)
+      .setScrollFactor(0);
   }
 
   private buildHud(): void {
-    // Wordless: a row of dim pips that warm as motes are taken.
     const originX = 28;
     const originY = 28;
-    for (let i = 0; i < MOTE_COUNT; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
       const pip = this.add
         .image(originX + i * 18, originY, "pip")
         .setBlendMode(Phaser.BlendModes.ADD)
         .setScale(0.55)
-        .setAlpha(0.18)
+        .setAlpha(0.16)
         .setDepth(100)
         .setScrollFactor(0);
       this.pips.push(pip);
     }
+    for (let i = 0; i < STAGES.length; i += 1) {
+      const pip = this.add
+        .image(WORLD_WIDTH - 28 - (STAGES.length - 1 - i) * 20, 28, "pip")
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setScale(i === 0 ? 0.7 : 0.5)
+        .setAlpha(i === 0 ? 0.85 : 0.2)
+        .setDepth(100)
+        .setScrollFactor(0);
+      this.stagePips.push(pip);
+    }
+    this.titleMark = this.add
+      .image(WORLD_WIDTH * 0.5, 64, "ring")
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(1.4)
+      .setAlpha(0.35)
+      .setDepth(90)
+      .setScrollFactor(0);
+    this.tweens.add({
+      targets: this.titleMark,
+      scale: { from: 1.2, to: 1.7 },
+      alpha: { from: 0.18, to: 0.4 },
+      duration: 2200,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
   }
 
   private bindInput(): void {
@@ -402,10 +493,14 @@ export class BootScene extends Phaser.Scene {
     });
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
       this.audio.unlock();
+      this.beginPlay();
       this.target.set(pointer.worldX, pointer.worldY);
       this.pulse();
     });
-    this.input.keyboard?.on("keydown", () => this.audio.unlock());
+    this.input.keyboard?.on("keydown", () => {
+      this.audio.unlock();
+      this.beginPlay();
+    });
     this.cursors = this.input.keyboard!.createCursorKeys();
   }
 
@@ -433,6 +528,11 @@ export class BootScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
+    if (this.phase === "failing" || this.phase === "ending") {
+      this.wispLight.setPosition(this.wisp.x, this.wisp.y);
+      return;
+    }
+
     const step = (delta / 1000) * 340;
     if (this.cursors.left.isDown) this.target.x -= step;
     if (this.cursors.right.isDown) this.target.x += step;
@@ -468,6 +568,8 @@ export class BootScene extends Phaser.Scene {
     }
 
     this.collectNearbyMotes();
+    this.wane(time, delta);
+    this.tryGate();
   }
 
   private collectNearbyMotes(): void {
@@ -512,19 +614,170 @@ export class BootScene extends Phaser.Scene {
         },
       });
       this.collected += 1;
+      this.stageCollected += 1;
       this.audio.unlock();
+      this.beginPlay();
       this.audio.collect(this.collected);
       this.grow();
     }
   }
 
   private grow(): void {
-    this.wispLight.radius = BASE_RADIUS + this.collected * RADIUS_STEP;
+    this.wispLight.radius = Math.min(640, this.wispLight.radius + RADIUS_STEP);
     this.wispLight.intensity = this.baseIntensity();
-    if (this.pips[this.collected - 1]) {
-      this.pips[this.collected - 1].setAlpha(0.95);
-      this.pips[this.collected - 1].setScale(0.85);
+    const pip = this.pips[this.stageCollected - 1];
+    if (pip) {
+      pip.setAlpha(0.95);
+      pip.setScale(0.85);
     }
+    const need = STAGES[this.stageIndex].need;
+    if (!this.gateOpen && this.stageCollected >= need) {
+      this.openGate();
+    }
+    this.reportState();
+  }
+
+  private beginPlay(): void {
+    if (this.phase !== "title") return;
+    this.phase = "play";
+    this.tweens.add({
+      targets: this.titleMark,
+      alpha: 0,
+      scale: 2.4,
+      duration: 700,
+      ease: "Quad.easeOut",
+      onComplete: () => this.titleMark.setVisible(false),
+    });
+  }
+
+  private wane(time: number, delta: number): void {
+    if (this.phase !== "play" || this.collected === 0) return;
+    this.wispLight.radius = Math.max(56, this.wispLight.radius - WANE_PER_SEC * (delta / 1000));
+    if (this.wispLight.radius < SNUFF_RADIUS + 40 && time - this.lastDrainAt > 900) {
+      this.lastDrainAt = time;
+      this.audio.drain();
+    }
+    if (this.wispLight.radius <= SNUFF_RADIUS) {
+      this.snuff();
+    }
+    this.reportState();
+  }
+
+  private openGate(): void {
+    this.gateOpen = true;
+    this.audio.gate();
+    this.tweens.add({
+      targets: this.gate,
+      alpha: 0.55,
+      duration: 500,
+      ease: "Sine.easeOut",
+    });
+    this.gateLight.intensity = 0.7;
+    this.gateLight.radius = 200;
+  }
+
+  private closeGate(): void {
+    this.gateOpen = false;
+    this.gate.setAlpha(0);
+    this.gateLight.intensity = 0;
+  }
+
+  private tryGate(): void {
+    if (!this.gateOpen || this.phase !== "play") return;
+    if (this.wisp.x < GATE_X - 36) return;
+    this.nextStage();
+  }
+
+  private spawnStage(index: number, fromGate: boolean): void {
+    this.stageIndex = index;
+    this.stageCollected = 0;
+    this.closeGate();
+    const stage = STAGES[index];
+    this.lights.setAmbientColor(stage.ambient);
+    this.spawnMotes(stage.homes);
+    this.applyBiome(index);
+    for (let i = 0; i < this.pips.length; i += 1) {
+      this.pips[i].setAlpha(i < stage.need ? 0.16 : 0);
+      this.pips[i].setScale(0.55);
+      this.pips[i].setVisible(i < stage.need);
+    }
+    for (let i = 0; i < this.stagePips.length; i += 1) {
+      this.stagePips[i].setAlpha(i === index ? 0.9 : i < index ? 0.55 : 0.18);
+      this.stagePips[i].setScale(i === index ? 0.72 : 0.48);
+    }
+    if (fromGate) {
+      this.target.set(80, WORLD_HEIGHT * 0.58);
+      this.wisp.setPosition(70, WORLD_HEIGHT * 0.58);
+      this.wispLight.radius = Math.max(BASE_RADIUS, this.wispLight.radius * 0.85);
+    }
+    this.reportState();
+  }
+
+  private applyBiome(index: number): void {
+    for (const tree of this.groveTrees) {
+      tree.setAlpha(index === 1 ? 0.35 : 1);
+    }
+    for (const tree of this.pineTrees) {
+      tree.setAlpha(index === 2 ? 0.45 : 1);
+    }
+    this.snag.setAlpha(index === 2 ? 1 : 0.85);
+    this.snag.setX(index === 2 ? WORLD_WIDTH * 0.5 : 300);
+  }
+
+  private nextStage(): void {
+    if (this.stageIndex >= STAGES.length - 1) {
+      this.finish();
+      return;
+    }
+    this.spawnStage(this.stageIndex + 1, true);
+  }
+
+  private snuff(): void {
+    if (this.phase !== "play") return;
+    this.phase = "failing";
+    this.audio.fail();
+    this.tweens.add({
+      targets: this.veil,
+      alpha: 0.92,
+      duration: 420,
+      yoyo: true,
+      hold: 180,
+      onYoyo: () => {
+        this.spawnStage(this.stageIndex, true);
+        this.wispLight.radius = BASE_RADIUS + this.stageIndex * 24;
+        this.wisp.setScale(this.baseScale());
+      },
+      onComplete: () => {
+        this.phase = "play";
+        this.reportState();
+      },
+    });
+  }
+
+  private finish(): void {
+    this.phase = "ending";
+    this.closeGate();
+    this.clearMotes();
+    this.audio.ending();
+    this.lights.setAmbientColor(0x1a2438);
+    this.gateLight.setPosition(WORLD_WIDTH * 0.5, WORLD_HEIGHT * 0.42);
+    this.gateLight.intensity = 0.55;
+    this.gateLight.radius = 420;
+    this.tweens.add({
+      targets: this.wisp,
+      x: WORLD_WIDTH * 0.5,
+      y: WORLD_HEIGHT * 0.46,
+      duration: 1600,
+      ease: "Sine.easeInOut",
+    });
+    this.target.set(WORLD_WIDTH * 0.5, WORLD_HEIGHT * 0.46);
+    this.tweens.add({
+      targets: this.wispLight,
+      radius: 520,
+      intensity: 1.6,
+      duration: 2200,
+      ease: "Sine.easeOut",
+    });
     this.reportState();
   }
 

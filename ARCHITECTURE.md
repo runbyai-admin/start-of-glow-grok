@@ -17,26 +17,28 @@ No game framework beyond Phaser, no asset build step, no backend. The game is a 
 ```
 index.html            page shell, canvas mount, analytics beacon
 src/main.ts           Phaser game config (1280x720, FIT scaling) and scene list
-src/scenes/BootScene.ts   the playable slice (atmosphere forest + wisp)
+src/scenes/BootScene.ts   the full game (title beat, three stages, snuff/reset, ending)
 src/textures.ts       runtime-generated silhouette and glow textures
-src/audio.ts          synthesized Web Audio bed
+src/audio.ts          synthesized Web Audio bed (drone, collect, drain, fail, gate, ending)
 src/global.d.ts       the window.__glow test hook contract
 tests/smoke.spec.ts   the smoke tests every build must pass
 scripts/check-workspace.mjs   repo hygiene guard behind `npm run check`
 deploy.sh             publish a build to one of the four slots
 ```
 
-## How the scene works
+## How the game works
 
-`BootScene` is still a vertical slice, not a contract - replace it freely, as long as `npm test` still passes.
+`BootScene` is the whole game. It is still one scene so the first frame is already the grove — there is no menu wall. Phases: `title` → `play` → (`failing` and back) → `ending`.
 
-- **Lighting.** `this.lights.enable().setAmbientColor(0x06080f)` keeps the world nearly black. Silhouette props (hills, pines, canopy trees, snag, ground, water, grass, ferns, rocks) call `setPipeline("Light2D")`. The light-being is *not* lit - it is a light *source*, drawn with `ADD` blending, with a `Phaser.GameObjects.Light` following it. A second, dimmer light sits on the moon so the ridgeline has a whisper of form before you collect anything.
-- **Reveal loop.** Collecting a mote raises `collected`, which grows the wisp light's `radius` and `intensity` and the sprite's scale. Starting radius is `250` so light stays scarce; each mote adds `42`. The world is revealed by the light, not by unhiding objects.
-- **Atmosphere (round 1).** Far hills, a pine back row, a canopy grove, a dead snag, a still-water band with a flipped wisp reflection, foreground grass and ferns that sway, drifting dust, mist bands, a faint moon shaft, and a vignette. Motes wander a seeded path through the grove rather than a uniform scatter. Collecting one eases it into the wisp. The HUD is wordless: twelve dim pips along the top that warm as motes are taken.
-- **Assets.** Everything is still drawn into canvas textures at `preload()` from `src/textures.ts`. Seeded `RandomDataGenerator` keeps silhouettes identical run to run. A later round may drop generated files in `public/assets/` and load them with a **relative** URL (`assets/...`, never `/assets/...`).
-- **Input.** Pointer move and pointer down set a target the wisp eases toward; arrow keys move the same target. Pointer down also pulses the light and unlocks audio. The wisp is clamped above the waterline.
-- **Audio.** `GlowAudio` constructs an `AudioContext` on the first pointer-down or key. Until then it is a no-op, because browsers gate sound.
-- **Test hook.** `reportState()` publishes `window.__glow` and `create()` sets `document.body.dataset.gameReady` after the first rendered frame. The smoke tests wait on that attribute. If you change the scene's state, keep the hook meaningful - it is the only thing standing between a broken build and a wasted judging round.
+- **Title beat.** The grove is live and motes can be collected on frame one (smoke tests depend on that). A faint ring hangs at the top until the first click, key, or collect, then it fades. That is the menu.
+- **Three stages.** `STAGES` in `BootScene.ts`: grove (need 4 of 5), shore (need 4 of 5), hollow (need 3 of 4). Each has its own mote homes and ambient. Biome shifts: grove trees dim on shore, pines dim and the snag moves to centre in the hollow. Collect enough and a vertical seam of light opens on the right (`GATE_X`). Walk into it for the next stage, or the ending after the last.
+- **Fail / reset.** After the first collect the glow *wanes* (`WANE_PER_SEC`). Drop to `SNUFF_RADIUS` and the wisp snuffs: a veil, the stage motes respawn, radius resets to a stage base. No text. Wordless fail.
+- **Ending.** After the hollow gate the wisp settles under a brighter ambient, the drone swells, motes are gone. Sit with it.
+- **Lighting.** Dark ambient, Light2D silhouettes, wisp as a *source* (not a lit object), moon light, and a third gate light when the seam is open. Phaser Light2D caps at ten; we use three.
+- **HUD.** Wordless. Left: pips for this stage's need. Right: three stage pips. No scoreboard.
+- **Audio.** `GlowAudio`: drone, collect ping, pulse, drain warning, fail downsweep, gate fifth, ending swell. Unlocks on first input.
+- **Assets.** Runtime canvas textures in `src/textures.ts`. No files in `public/assets/`.
+- **Test hook.** `window.__glow` `{ ready, collected, remaining, glowRadius, lightsActive }` and `body[data-game-ready]`. Smoke still: lights on, motes remaining at boot, a pointer sweep collects, radius grows past 260.
 
 ## Fixed resolution
 
