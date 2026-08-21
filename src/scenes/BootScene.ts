@@ -470,16 +470,16 @@ export class BootScene extends Phaser.Scene {
       this.stagePips.push(pip);
     }
     this.titleMark = this.add
-      .image(WORLD_WIDTH * 0.5, 64, "ring")
+      .image(WORLD_WIDTH * 0.5, 72, "ring")
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(1.4)
-      .setAlpha(0.35)
+      .setScale(1.8)
+      .setAlpha(0.55)
       .setDepth(90)
       .setScrollFactor(0);
     this.tweens.add({
       targets: this.titleMark,
-      scale: { from: 1.2, to: 1.7 },
-      alpha: { from: 0.18, to: 0.4 },
+      scale: { from: 1.5, to: 2.1 },
+      alpha: { from: 0.28, to: 0.7 },
       duration: 2200,
       yoyo: true,
       repeat: -1,
@@ -666,18 +666,23 @@ export class BootScene extends Phaser.Scene {
   private openGate(): void {
     this.gateOpen = true;
     this.audio.gate();
+    this.tweens.killTweensOf(this.gate);
     this.tweens.add({
       targets: this.gate,
-      alpha: 0.55,
-      duration: 500,
-      ease: "Sine.easeOut",
+      alpha: { from: 0.25, to: 0.7 },
+      scaleY: { from: 4.2, to: 5.4 },
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
     });
-    this.gateLight.intensity = 0.7;
-    this.gateLight.radius = 200;
+    this.gateLight.intensity = 0.85;
+    this.gateLight.radius = 220;
   }
 
   private closeGate(): void {
     this.gateOpen = false;
+    this.tweens.killTweensOf(this.gate);
     this.gate.setAlpha(0);
     this.gateLight.intensity = 0;
   }
