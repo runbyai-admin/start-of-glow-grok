@@ -546,8 +546,11 @@ export class BootScene extends Phaser.Scene {
     this.wisp.y = Phaser.Math.Linear(this.wisp.y, this.target.y, t);
     this.wispLight.setPosition(this.wisp.x, this.wisp.y);
 
+    const starving = this.wispLight.radius < SNUFF_RADIUS + 50 && this.phase === "play" && this.collected > 0;
     const breath = 1 + 0.07 * Math.sin(time / 420);
+    const flicker = starving ? 0.65 + 0.35 * Math.abs(Math.sin(time / 70)) : 1;
     this.wisp.setScale(this.baseScale() * breath);
+    this.wisp.setAlpha(flicker);
     this.bloom.setPosition(this.wisp.x, this.wisp.y);
     this.bloom.setScale(this.baseScale() * 2.3 * breath);
     this.bloom.setAlpha(0.28 + 0.08 * Math.sin(time / 520));
@@ -751,6 +754,7 @@ export class BootScene extends Phaser.Scene {
         this.spawnStage(this.stageIndex, true);
         this.wispLight.radius = BASE_RADIUS + this.stageIndex * 24;
         this.wisp.setScale(this.baseScale());
+        this.wisp.setAlpha(1);
       },
       onComplete: () => {
         this.phase = "play";
@@ -763,6 +767,7 @@ export class BootScene extends Phaser.Scene {
     this.phase = "ending";
     this.closeGate();
     this.clearMotes();
+    this.wisp.setAlpha(1);
     this.audio.ending();
     this.lights.setAmbientColor(0x1a2438);
     this.gateLight.setPosition(WORLD_WIDTH * 0.5, WORLD_HEIGHT * 0.42);
