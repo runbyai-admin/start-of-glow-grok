@@ -723,13 +723,14 @@ export class BootScene extends Phaser.Scene {
 
   private applyBiome(index: number): void {
     for (const tree of this.groveTrees) {
-      tree.setAlpha(index === 1 ? 0.35 : 1);
+      tree.setAlpha(index === 0 ? 1 : index === 1 ? 0.28 : 0.12);
     }
     for (const tree of this.pineTrees) {
-      tree.setAlpha(index === 2 ? 0.45 : 1);
+      tree.setAlpha(index === 2 ? 0.28 : 1);
     }
     this.snag.setAlpha(index === 2 ? 1 : 0.85);
     this.snag.setX(index === 2 ? WORLD_WIDTH * 0.5 : 300);
+    this.snag.setScale(index === 2 ? 0.95 : 0.7);
   }
 
   private nextStage(): void {
