@@ -1,10 +1,13 @@
 import Phaser from "phaser";
 import {
+  makeCaveSkyTexture,
   makeGlowTexture,
   makeGroundTexture,
   makeHazardTexture,
   makeHillsTexture,
+  makeLanternTexture,
   makeSkyTexture,
+  makeSocketTexture,
   makeTreeTexture,
 } from "../textures";
 import type { Ambience } from "../audio";
@@ -21,6 +24,12 @@ import {
   spendReach,
   type MoteArrival,
 } from "../reach";
+import {
+  LANTERN_LIGHT_INTENSITY,
+  LANTERN_LIGHT_RADIUS,
+  nearestUnlitSocket,
+  requiredLanterns,
+} from "../lantern";
 
 const COLLECT_RADIUS = 45;
 const HAZARD_RADIUS = 34;
@@ -94,7 +103,11 @@ const MOOD_TINT: Record<LevelConfig["mood"], { tree: number[]; ground: number; h
   dusk: { tree: [0x1b2438, 0x161d2e, 0x141a2a], ground: 0x10151f, hillsTint: 0x0d1526 },
   "deep-night": { tree: [0x141a2c, 0x101624, 0x0e1220], ground: 0x0b0f18, hillsTint: 0x0a0f1e },
   "storm-dark": { tree: [0x171226, 0x120e1e, 0x0f0c1a], ground: 0x0d0a16, hillsTint: 0x120c22 },
+  hollow: { tree: [0x1a1218, 0x140e14, 0x100c12], ground: 0x0c0810, hillsTint: 0x0a080e },
 };
+
+/** Still water line in the hollow - lanterns above it throw a dim reflection. */
+const WATER_Y = 560;
 
 /**
  * The reusable stage. One scene, driven entirely by LevelConfig data (see
@@ -147,6 +160,18 @@ export class LevelScene extends Phaser.Scene {
   private arrivalVeil!: Phaser.GameObjects.Rectangle;
   private inviteShown = 0;
   private incoming: Phaser.GameObjects.Image[] = [];
+
+  private sockets: Array<{
+    x: number;
+    y: number;
+    lit: boolean;
+    img: Phaser.GameObjects.Image;
+    lantern?: Phaser.GameObjects.Image;
+    light?: Phaser.GameObjects.Light;
+    reflection?: Phaser.GameObjects.Image;
+  }> = [];
+  private planted = 0;
+  private socketRing!: Phaser.GameObjects.Graphics;
 
   private collected = 0;
   /** Motes actually placed this level - derived from the data used, never assumed from config. */
@@ -201,6 +226,8 @@ export class LevelScene extends Phaser.Scene {
     this.motes = [];
     this.incoming = [];
     this.hazards = [];
+    this.sockets = [];
+    this.planted = 0;
     this.target.set(START_X, START_Y);
   }
 
@@ -213,16 +240,23 @@ export class LevelScene extends Phaser.Scene {
     makeGlowTexture(this, "shadow-spark", 10, "rgba(150,110,220,0.85)", "rgba(90,50,150,0.3)");
     makeHazardTexture(this, `hazard-${this.config.index}`, 30, this.config.index * 97);
     makeSkyTexture(this, "sky", VIEW_WIDTH, VIEW_HEIGHT, 11);
+    makeCaveSkyTexture(this, "cave-sky", VIEW_WIDTH, VIEW_HEIGHT);
     makeHillsTexture(this, "hills", 1760, 260, 3);
     makeGroundTexture(this, "ground", WORLD_WIDTH, 240, 7);
+    makeLanternTexture(this, "lantern");
+    makeSocketTexture(this, "socket");
     for (let i = 0; i < 4; i += 1) {
       makeTreeTexture(this, `tree-${i}`, 240, 560, i + 1);
     }
   }
 
+  private isHollow(): boolean {
+    return this.config.mood === "hollow";
+  }
+
   create(): void {
-    this.lights.enable().setAmbientColor(0x0a0d18);
-    this.cameras.main.setBackgroundColor(0x05060c);
+    this.lights.enable().setAmbientColor(this.isHollow() ? 0x08060c : 0x0a0d18);
+    this.cameras.main.setBackgroundColor(this.isHollow() ? 0x040308 : 0x05060c);
 
     this.buildSky();
     this.buildHills();
@@ -230,9 +264,11 @@ export class LevelScene extends Phaser.Scene {
     this.buildBeacon();
     this.buildFireflies();
     this.buildMotes();
+    this.buildSockets();
     this.buildWisp();
     this.buildHazards();
     this.buildStorm();
+    this.buildHollow();
     this.buildCamera();
     this.buildVignette();
     this.buildHud();
@@ -246,10 +282,12 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private buildSky(): void {
-    this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, "sky").setScrollFactor(0).setDepth(-100);
+    const key = this.isHollow() ? "cave-sky" : "sky";
+    this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, key).setScrollFactor(0).setDepth(-100);
   }
 
   private buildHills(): void {
+    if (this.isHollow()) return;
     const tint = MOOD_TINT[this.config.mood].hillsTint;
     this.add.image(0, WORLD_HEIGHT - 150, "hills").setOrigin(0, 1).setTint(tint).setScrollFactor(0.25).setDepth(-40);
   }
@@ -257,12 +295,13 @@ export class LevelScene extends Phaser.Scene {
   private buildForest(): void {
     const rng = new Phaser.Math.RandomDataGenerator([`start-of-glow-trees-${this.config.index}`]);
     const tints = MOOD_TINT[this.config.mood].tree;
-    for (let i = 0; i < TREE_COUNT; i += 1) {
-      const x = 60 + (i / (TREE_COUNT - 1)) * (WORLD_WIDTH - 120) + rng.between(-45, 45);
+    const count = this.isHollow() ? 8 : TREE_COUNT;
+    for (let i = 0; i < count; i += 1) {
+      const x = 60 + (i / Math.max(1, count - 1)) * (WORLD_WIDTH - 120) + rng.between(-45, 45);
       const tree = this.add
         .image(x, WORLD_HEIGHT - 120 + rng.between(-8, 8), `tree-${i % 4}`)
         .setOrigin(0.5, 1)
-        .setScale(rng.realInRange(0.75, 1.3))
+        .setScale(rng.realInRange(this.isHollow() ? 1.05 : 0.75, this.isHollow() ? 1.55 : 1.3))
         .setTint(tints[rng.between(0, tints.length - 1)])
         .setDepth(-30);
       tree.setPipeline("Light2D");
@@ -483,6 +522,43 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /**
+   * The hollow's identity: still water, slow mist, and dim stone rings that
+   * take a kindled press. Forest levels skip this entire layer.
+   */
+  private buildHollow(): void {
+    if (!this.isHollow()) return;
+
+    const water = this.add
+      .rectangle(WORLD_WIDTH / 2, (WATER_Y + WORLD_HEIGHT) / 2, WORLD_WIDTH, WORLD_HEIGHT - WATER_Y, 0x0a1824, 0.38)
+      .setDepth(-9);
+    water.setPipeline("Light2D");
+
+    const mist = this.add.particles(0, 0, "spark", {
+      x: { min: -80, max: WORLD_WIDTH + 80 },
+      y: { min: WATER_Y - 90, max: WORLD_HEIGHT - 40 },
+      speedX: { min: -18, max: 18 },
+      speedY: { min: -6, max: 8 },
+      lifespan: { min: 2800, max: 5200 },
+      scale: { start: 0.55, end: 0.1 },
+      alpha: { start: 0.16, end: 0 },
+      quantity: 1,
+      frequency: 90,
+      tint: [0xc9b896, 0x9aa7c4, 0xd8c4a0],
+      blendMode: Phaser.BlendModes.ADD,
+    });
+    mist.setDepth(-6);
+  }
+
+  private buildSockets(): void {
+    this.socketRing = this.add.graphics().setDepth(5);
+    const points = this.config.layout?.sockets ?? [];
+    for (const point of points) {
+      const img = this.add.image(point.x, point.y, "socket").setDepth(3).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD);
+      this.sockets.push({ x: point.x, y: point.y, lit: false, img });
+    }
+  }
+
+  /**
    * Noticing and hunting are two different distances. A shadow *sees* the light
    * as far as the light carries (alertRadius, which grows with the reach), and
    * that is a look: its own glow comes up so the player can read it from across
@@ -593,11 +669,13 @@ export class LevelScene extends Phaser.Scene {
     // level 1 is the only thing still offering, and the screen goes back to
     // being the player's problem.
     if (this.taught || this.locked || this.inviteShown >= 6 || this.inviteAt > this.time.now) return;
-    let inReach = false;
-    for (const mote of this.motes) {
-      if (Phaser.Math.Distance.Between(mote.x, mote.y, this.wisp.x, this.wisp.y) <= this.reach) {
-        inReach = true;
-        break;
+    let inReach = nearestUnlitSocket({ x: this.wisp.x, y: this.wisp.y }, this.sockets) !== undefined;
+    if (!inReach) {
+      for (const mote of this.motes) {
+        if (Phaser.Math.Distance.Between(mote.x, mote.y, this.wisp.x, this.wisp.y) <= this.reach) {
+          inReach = true;
+          break;
+        }
       }
     }
     if (!inReach) return;
@@ -618,7 +696,7 @@ export class LevelScene extends Phaser.Scene {
     // Words are the fallback, not the lesson: only after the wordless version
     // has played three times unanswered, and only on the first level.
     this.inviteShown += 1;
-    if (this.inviteShown === 3 && this.config.index === 1 && this.reachLine) {
+    if (this.inviteShown === 3 && (this.config.index === 1 || this.isHollow()) && this.reachLine) {
       this.tweens.add({ targets: this.reachLine, alpha: { from: 0, to: 0.75 }, duration: 700, ease: "Sine.easeInOut" });
     }
   }
@@ -654,7 +732,7 @@ export class LevelScene extends Phaser.Scene {
     });
 
     this.openLine = this.add
-      .text(VIEW_WIDTH / 2, 80, "the beacon is lit", {
+      .text(VIEW_WIDTH / 2, 80, this.isHollow() ? "the heart is lit" : "the beacon is lit", {
         fontFamily: "Georgia, 'Times New Roman', serif",
         fontSize: "17px",
         color: "#ffd9a0",
@@ -664,9 +742,9 @@ export class LevelScene extends Phaser.Scene {
       .setDepth(100)
       .setScrollFactor(0);
 
-    if (this.config.index === 1) {
+    if (this.config.index === 1 || this.isHollow()) {
       this.reachLine = this.add
-        .text(VIEW_WIDTH / 2, VIEW_HEIGHT - 54, "press · draw the light in", {
+        .text(VIEW_WIDTH / 2, VIEW_HEIGHT - 54, this.isHollow() ? "press · leave a light" : "press · draw the light in", {
           fontFamily: "Georgia, 'Times New Roman', serif",
           fontSize: "17px",
           color: "#ffd9a0",
@@ -697,11 +775,11 @@ export class LevelScene extends Phaser.Scene {
       this.ambience.unlock();
       if (this.locked) return;
       this.target.set(pointer.worldX, pointer.worldY);
-      this.gather();
+      this.pressLight();
     });
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on("down", () => {
       this.ambience.unlock();
-      this.gather();
+      this.pressLight();
     });
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = {
@@ -713,14 +791,92 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /**
+   * One press, two spends: in the hollow a kindled press on a socket plants a
+   * lantern; everywhere else (and in the hollow away from a socket) it gathers.
+   * Both burn the same glow.
+   */
+  private pressLight(): void {
+    if (this.locked || this.time.now < this.gatherReadyAt) return;
+    this.gatherReadyAt = this.time.now + GATHER_COOLDOWN_MS;
+    if (!reachReady(this.reach)) {
+      this.deniedGathers += 1;
+      this.gatherDenied();
+      this.reportState();
+      return;
+    }
+    if (this.tryPlant()) return;
+    this.gather();
+  }
+
+  /** Spend a kindled glow to leave a lantern on the nearest unlit socket. */
+  private tryPlant(): boolean {
+    const target = nearestUnlitSocket({ x: this.wisp.x, y: this.wisp.y }, this.sockets);
+    if (!target) return false;
+    const socket = this.sockets.find((s) => s === target);
+    if (!socket || socket.lit) return false;
+
+    this.gathers += 1;
+    if (!this.taught) {
+      this.taught = true;
+      if (this.reachLine) {
+        this.tweens.killTweensOf(this.reachLine);
+        this.reachLine.setAlpha(0);
+      }
+    }
+
+    const spent = this.reach;
+    this.setReach(spendReach(this.reach));
+    this.gatherWave(spent, 1);
+    this.ambience.plant();
+    this.pulseBoost = 1.1;
+
+    socket.lit = true;
+    socket.img.setAlpha(0.2);
+    const lantern = this.add
+      .image(socket.x, socket.y - 18, "lantern")
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setScale(0.2)
+      .setDepth(6);
+    const light = this.lights.addLight(socket.x, socket.y - 10, LANTERN_LIGHT_RADIUS, 0xffe0a8, 0.2);
+    socket.lantern = lantern;
+    socket.light = light;
+    this.tweens.add({
+      targets: lantern,
+      scale: 0.95,
+      duration: 420,
+      ease: "Cubic.easeOut",
+    });
+    this.tweens.add({
+      targets: light,
+      intensity: LANTERN_LIGHT_INTENSITY,
+      duration: 480,
+      ease: "Sine.easeOut",
+    });
+    if (socket.y < WATER_Y) {
+      const reflection = this.add
+        .image(socket.x, WATER_Y * 2 - socket.y + 18, "lantern")
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0)
+        .setScale(0.7, -0.55)
+        .setDepth(-7);
+      socket.reflection = reflection;
+      this.tweens.add({ targets: reflection, alpha: 0.28, duration: 700, ease: "Sine.easeOut" });
+    }
+    this.planted += 1;
+    this.showGatherCost();
+    this.grow();
+    this.reportState();
+    return true;
+  }
+
+  /**
    * The press. Everything inside the lit circle is drawn in, nearest first, and
    * the circle pays for it. Only a fully kindled glow can reach. The press burns
    * that glow to its floor whether or not it catches anything; moving through
    * light, rather than pulling it, is what earns the next reach.
    */
   private gather(): void {
-    if (this.locked || this.time.now < this.gatherReadyAt) return;
-    this.gatherReadyAt = this.time.now + GATHER_COOLDOWN_MS;
+    if (this.locked) return;
     if (!reachReady(this.reach)) {
       this.deniedGathers += 1;
       this.gatherDenied();
@@ -797,9 +953,12 @@ export class LevelScene extends Phaser.Scene {
 
   /** One quiet sentence, once, after the screen has already shown the cost. */
   private showGatherCost(): void {
-    if (this.costShown || this.config.index !== 1 || !this.reachLine) return;
+    if (this.costShown || !this.reachLine) return;
+    if (this.config.index !== 1 && !this.isHollow()) return;
     this.costShown = true;
-    this.reachLine.setText("move through light to kindle the reach").setAlpha(0);
+    this.reachLine.setText(
+      this.isHollow() ? "move through light to kindle the next" : "move through light to kindle the reach",
+    ).setAlpha(0);
     this.tweens.add({ targets: this.reachLine, alpha: 0.72, duration: 260, ease: "Sine.easeOut" });
     this.after(1750, () => {
       if (!this.reachLine) return;
@@ -848,7 +1007,7 @@ export class LevelScene extends Phaser.Scene {
   private drawReachRing(time: number): void {
     this.reachRing.clear();
     if (this.locked) return;
-    let inReach = false;
+    let inReach = nearestUnlitSocket({ x: this.wisp.x, y: this.wisp.y }, this.sockets) !== undefined;
     for (const mote of this.motes) {
       if (Phaser.Math.Distance.Between(mote.x, mote.y, this.wisp.x, this.wisp.y) <= this.reach) {
         inReach = true;
@@ -881,12 +1040,31 @@ export class LevelScene extends Phaser.Scene {
     this.reachRing.strokePath();
 
     // A filament to each mote in reach: what the press will take, before it is pressed.
-    if (!inReach) return;
+    // In the hollow, a warmer filament to a plantable socket wins if both are close.
+    const plantable = nearestUnlitSocket({ x: this.wisp.x, y: this.wisp.y }, this.sockets);
+    if (plantable) {
+      this.reachRing.lineStyle(2, 0xffe2a8, kindled ? 0.55 : 0.2);
+      this.reachRing.lineBetween(this.wisp.x, this.wisp.y, plantable.x, plantable.y);
+    }
+    if (!inReach && !plantable) return;
     for (const mote of this.motes) {
       const d = Phaser.Math.Distance.Between(mote.x, mote.y, this.wisp.x, this.wisp.y);
       if (d > this.reach) continue;
       this.reachRing.lineStyle(1, 0xffe2a8, 0.16 + 0.26 * (1 - d / this.reach));
       this.reachRing.lineBetween(this.wisp.x, this.wisp.y, mote.x, mote.y);
+    }
+  }
+
+  private drawSockets(time: number): void {
+    this.socketRing.clear();
+    if (this.sockets.length === 0 || this.locked) return;
+    const kindled = reachReady(this.reach);
+    for (const socket of this.sockets) {
+      if (socket.lit) continue;
+      const near = nearestUnlitSocket({ x: this.wisp.x, y: this.wisp.y }, [socket]) !== undefined;
+      const pulse = near && kindled ? 0.55 + Math.sin(time * 0.008) * 0.25 : 0.22;
+      this.socketRing.lineStyle(near && kindled ? 3 : 1.5, near && kindled ? 0xffe2a8 : 0x8a7a58, pulse);
+      this.socketRing.strokeEllipse(socket.x, socket.y + 6, 58, 24);
     }
   }
 
@@ -962,6 +1140,7 @@ export class LevelScene extends Phaser.Scene {
     this.wispLight.intensity = this.baseIntensity() + breathe + this.pulseBoost + this.reachFeel(time, dt);
 
     this.drawReachRing(time);
+    this.drawSockets(time);
     this.inviteGather();
 
     const beforeExpiry = this.chainState;
@@ -1165,7 +1344,19 @@ export class LevelScene extends Phaser.Scene {
     return Math.min(this.config.requiredMotes, this.totalMotes);
   }
 
+  private requiredSockets(): number {
+    return requiredLanterns(this.config.requiredSockets ?? 0, this.sockets.length);
+  }
+
+  private usingLanterns(): boolean {
+    return this.sockets.length > 0;
+  }
+
   private grow(): void {
+    if (this.usingLanterns()) {
+      this.growLanterns();
+      return;
+    }
     const required = this.requiredMotes();
     const progress = Phaser.Math.Clamp(this.collected / required, 0, 1);
     this.beacon.setAlpha(0.05 + progress * 0.8);
@@ -1182,6 +1373,32 @@ export class LevelScene extends Phaser.Scene {
     }
 
     if (this.collected >= this.totalMotes && !this.flawlessNow) {
+      this.flawlessNow = true;
+      this.beacon.setAlpha(1);
+      this.beaconLight.intensity = 2.2;
+      this.beaconLight.setColor(0xffe9c0);
+      this.beaconPulse(1.2);
+    }
+
+    this.updateHud();
+    this.reportState();
+  }
+
+  /** The hollow opens on planted lanterns; motes only kindle the next plant. */
+  private growLanterns(): void {
+    const required = this.requiredSockets();
+    const progress = required > 0 ? Phaser.Math.Clamp(this.planted / required, 0, 1) : 0;
+    this.beacon.setAlpha(0.05 + progress * 0.8);
+    this.beaconLight.intensity = progress * 1.4;
+
+    if (required > 0 && this.planted >= required && !this.levelClear) {
+      this.levelClear = true;
+      this.ambience.beaconOpen();
+      this.showOpenLine();
+      this.beaconPulse(1.12);
+    }
+
+    if (this.planted >= this.sockets.length && this.collected >= this.totalMotes && !this.flawlessNow) {
       this.flawlessNow = true;
       this.beacon.setAlpha(1);
       this.beaconLight.intensity = 2.2;
@@ -1344,17 +1561,28 @@ export class LevelScene extends Phaser.Scene {
           taught: this.taught,
         });
       } else {
-        this.scene.start("ending", { ambience: this.ambience, resets: this.resets, flawless });
+        this.scene.start("ending", {
+          ambience: this.ambience,
+          resets: this.resets,
+          flawless,
+          lanterns: this.planted,
+        });
       }
     });
   }
 
   private updateHud(): void {
-    const moteSegment = this.flawlessNow
-      ? `motes ${this.collected}/${this.totalMotes} · flawless`
-      : this.levelClear
-        ? `motes ${this.collected}/${this.totalMotes} · beacon open`
-        : `motes ${this.collected}/${this.totalMotes} · beacon at ${this.requiredMotes()}`;
+    const moteSegment = this.usingLanterns()
+      ? this.flawlessNow
+        ? `lanterns ${this.planted}/${this.sockets.length} · flawless`
+        : this.levelClear
+          ? `lanterns ${this.planted}/${this.sockets.length} · heart open`
+          : `lanterns ${this.planted}/${this.sockets.length} · heart at ${this.requiredSockets()}`
+      : this.flawlessNow
+        ? `motes ${this.collected}/${this.totalMotes} · flawless`
+        : this.levelClear
+          ? `motes ${this.collected}/${this.totalMotes} · beacon open`
+          : `motes ${this.collected}/${this.totalMotes} · beacon at ${this.requiredMotes()}`;
     this.hud.setText(`LEVEL ${this.config.index}/${LEVELS.length}   ${moteSegment}   resets ${this.resets}`);
   }
 
@@ -1373,7 +1601,7 @@ export class LevelScene extends Phaser.Scene {
       lightsActive: this.lights.active,
       level: this.config.index,
       resets: this.resets,
-      required: this.requiredMotes(),
+      required: this.usingLanterns() ? this.requiredSockets() : this.requiredMotes(),
       beaconOpen: this.levelClear,
       flawless: this.flawlessLevels,
       wispX: Math.round(this.wisp.x),
@@ -1386,6 +1614,8 @@ export class LevelScene extends Phaser.Scene {
       deniedGathers: this.deniedGathers,
       touchedMotes: this.touchedMotes,
       gatheredMotes: this.gatheredMotes,
+      planted: this.planted,
+      sockets: this.sockets.map((s) => ({ x: Math.round(s.x), y: Math.round(s.y), lit: s.lit })),
       chain: this.chainState.count,
       chainRemainingMs: Math.max(0, Math.round(this.chainState.deadline - this.time.now)),
       radianceWaves: this.chainState.waves,

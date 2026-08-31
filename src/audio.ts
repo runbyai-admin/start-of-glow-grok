@@ -196,6 +196,47 @@ export class Ambience {
     }
   }
 
+  /**
+   * A lantern being set down: the gather inhale played in reverse, a warm
+   * drop instead of a draw. Short enough that a run of plants still phrases.
+   */
+  plant(): void {
+    if (!this.ctx || !this.master) return;
+    try {
+      const ctx = this.ctx;
+      const master = this.master;
+      const now = ctx.currentTime;
+
+      const body = ctx.createOscillator();
+      body.type = "sine";
+      body.frequency.setValueAtTime(330, now);
+      body.frequency.exponentialRampToValueAtTime(164, now + 0.42);
+      const bodyGain = ctx.createGain();
+      bodyGain.gain.setValueAtTime(0.0001, now);
+      bodyGain.gain.linearRampToValueAtTime(0.12, now + 0.03);
+      bodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
+      body.connect(bodyGain);
+      bodyGain.connect(master);
+      body.start(now);
+      body.stop(now + 0.6);
+
+      const partial = ctx.createOscillator();
+      partial.type = "triangle";
+      partial.frequency.setValueAtTime(196, now);
+      partial.frequency.exponentialRampToValueAtTime(98, now + 0.5);
+      const partialGain = ctx.createGain();
+      partialGain.gain.setValueAtTime(0.0001, now);
+      partialGain.gain.linearRampToValueAtTime(0.06, now + 0.04);
+      partialGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
+      partial.connect(partialGain);
+      partialGain.connect(master);
+      partial.start(now);
+      partial.stop(now + 0.72);
+    } catch {
+      /* a missed plant is not a game-breaking error */
+    }
+  }
+
   /** Low warm bloom at a full chain: distinct from pickup and beacon voices. */
   radiance(): void {
     if (!this.ctx || !this.master) return;

@@ -14,6 +14,11 @@ export interface LevelLayout {
   motes: Array<{ x: number; y: number }>;
   /** One waypoint loop per hazard; patrols cycle the loop at hazardSpeed. */
   hazards: Array<Array<{ x: number; y: number }>>;
+  /**
+   * Dim stone rings that take a kindled press. First `requiredSockets` are the
+   * safe route; any after that sit in hazard pockets. Forest levels omit this.
+   */
+  sockets?: Array<{ x: number; y: number }>;
 }
 
 export interface LevelConfig {
@@ -30,9 +35,14 @@ export interface LevelConfig {
   hazardCount: number;
   /** CSS px/second along each hazard's patrol path. */
   hazardSpeed: number;
-  /** Sky seed, forest tint, and - for storm-dark - a real weather layer (see LevelScene.buildStorm). */
-  mood: "dusk" | "deep-night" | "storm-dark";
+  /** Sky seed, forest tint, and - for storm-dark / hollow - a real weather layer. */
+  mood: "dusk" | "deep-night" | "storm-dark" | "hollow";
   layout?: LevelLayout;
+  /**
+   * How many planted lanterns open the heart. Only the hollow uses this;
+   * forest levels open on `requiredMotes` as before.
+   */
+  requiredSockets?: number;
 }
 
 /**
@@ -197,6 +207,58 @@ export const LEVEL_3_LAYOUT: LevelLayout = {
   ],
 };
 
+/**
+ * Level 4 is a different place, not a harder forest. Three low shadow pockets
+ * leave a dry mid-height road. Five sockets sit on that road; two more sit
+ * inside the first two pockets. Ten motes kindle the next plant along the
+ * road; four more sit with the optional sockets. The heart opens on five
+ * lanterns. A spent wisp has to walk the motes; a kindled one can plant.
+ */
+export const LEVEL_4_LAYOUT: LevelLayout = {
+  motes: [
+    { x: 360, y: 500 },
+    { x: 520, y: 520 },
+    { x: 700, y: 500 },
+    { x: 900, y: 480 },
+    { x: 1080, y: 360 },
+    { x: 1260, y: 330 },
+    { x: 1480, y: 300 },
+    { x: 1700, y: 280 },
+    { x: 1920, y: 250 },
+    { x: 2180, y: 270 },
+    { x: 780, y: 140 },
+    { x: 850, y: 110 },
+    { x: 1320, y: 650 },
+    { x: 1420, y: 670 },
+  ],
+  hazards: [
+    [
+      { x: 640, y: 70 },
+      { x: 960, y: 80 },
+      { x: 800, y: 190 },
+    ],
+    [
+      { x: 1180, y: 610 },
+      { x: 1540, y: 620 },
+      { x: 1360, y: 700 },
+    ],
+    [
+      { x: 1860, y: 610 },
+      { x: 2220, y: 620 },
+      { x: 2040, y: 700 },
+    ],
+  ],
+  sockets: [
+    { x: 290, y: 450 },
+    { x: 760, y: 470 },
+    { x: 1140, y: 400 },
+    { x: 1580, y: 290 },
+    { x: 2000, y: 250 },
+    { x: 800, y: 130 },
+    { x: 1360, y: 660 },
+  ],
+};
+
 export const LEVELS: LevelConfig[] = [
   {
     index: 1,
@@ -227,6 +289,17 @@ export const LEVELS: LevelConfig[] = [
     hazardSpeed: 120,
     mood: "storm-dark",
     layout: LEVEL_3_LAYOUT,
+  },
+  {
+    index: 4,
+    name: "The Still Hollow",
+    moteCount: 14,
+    requiredMotes: 10,
+    requiredSockets: 5,
+    hazardCount: 3,
+    hazardSpeed: 88,
+    mood: "hollow",
+    layout: LEVEL_4_LAYOUT,
   },
 ];
 

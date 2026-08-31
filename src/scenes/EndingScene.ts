@@ -1,6 +1,7 @@
 import Phaser from "phaser";
-import { makeGlowTexture, makeSkyTexture } from "../textures";
+import { makeGlowTexture, makeLanternTexture, makeSkyTexture } from "../textures";
 import type { Ambience } from "../audio";
+import { LEVELS } from "../levels";
 import { VIEW_HEIGHT, VIEW_WIDTH } from "./dimensions";
 
 interface EndingInitData {
@@ -8,6 +9,8 @@ interface EndingInitData {
   resets: number;
   /** Flawless levels (every mote found) completed this run. */
   flawless?: number;
+  /** Lanterns planted in the hollow this run. */
+  lanterns?: number;
 }
 
 /**
@@ -22,6 +25,7 @@ export class EndingScene extends Phaser.Scene {
   private ambience!: Ambience;
   private resets = 0;
   private flawless = 0;
+  private lanterns = 0;
   private isNewBest = false;
 
   constructor() {
@@ -32,6 +36,7 @@ export class EndingScene extends Phaser.Scene {
     this.ambience = data.ambience;
     this.resets = data.resets ?? 0;
     this.flawless = data.flawless ?? 0;
+    this.lanterns = data.lanterns ?? 0;
     this.isNewBest = this.recordBest(this.resets);
   }
 
@@ -58,6 +63,7 @@ export class EndingScene extends Phaser.Scene {
   preload(): void {
     makeSkyTexture(this, "sky", VIEW_WIDTH, VIEW_HEIGHT, 11);
     makeGlowTexture(this, "wisp", 85, "rgba(255,255,255,1)", "rgba(150,214,255,0.55)");
+    makeLanternTexture(this, "lantern");
   }
 
   create(): void {
@@ -97,8 +103,30 @@ export class EndingScene extends Phaser.Scene {
     // any display that tones the additive glow down), which made the run's
     // own closing stats the least readable text in the game (found at the
     // 08-24 judging-day playtest).
+    if (this.lanterns > 0) {
+      for (let i = 0; i < Math.min(this.lanterns, 7); i += 1) {
+        const angle = -Math.PI / 2 + (i / Math.max(1, Math.min(this.lanterns, 7) - 1)) * Math.PI;
+        const x = VIEW_WIDTH / 2 + Math.cos(angle) * 220;
+        const y = VIEW_HEIGHT / 2 + Math.sin(angle) * 70 + 40;
+        const lamp = this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, "lantern").setBlendMode(Phaser.BlendModes.ADD).setScale(0.15).setDepth(8);
+        this.tweens.add({
+          targets: lamp,
+          x,
+          y,
+          scale: 0.7,
+          duration: 1800 + i * 90,
+          delay: 400,
+          ease: "Sine.easeOut",
+        });
+      }
+    }
+
     const line = this.add
-      .text(VIEW_WIDTH / 2, VIEW_HEIGHT * 0.78, "the forest remembers the light", {
+      .text(
+        VIEW_WIDTH / 2,
+        VIEW_HEIGHT * 0.78,
+        this.lanterns > 0 ? "the hollow kept every light you left" : "the forest remembers the light",
+        {
         fontFamily: "Georgia, 'Times New Roman', serif",
         fontSize: "24px",
         color: "#e7dcc2",
@@ -112,7 +140,9 @@ export class EndingScene extends Phaser.Scene {
     // scolding, just the resets line it would have gotten anyway.
     if (this.flawless > 0) {
       const flawlessText =
-        this.flawless >= 3 ? "you found every mote there was" : `${this.flawless} of 3 clearings gave up every mote`;
+        this.flawless >= LEVELS.length
+          ? "you found every mote there was"
+          : `${this.flawless} of ${LEVELS.length} clearings gave up every mote`;
       const flawlessLine = this.add
         .text(VIEW_WIDTH / 2, VIEW_HEIGHT * 0.845, flawlessText, {
           fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",

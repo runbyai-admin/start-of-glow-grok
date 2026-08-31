@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { LEVEL_1_LAYOUT, LEVEL_2_LAYOUT, LEVEL_3_LAYOUT, type LevelLayout } from "../src/levels.ts";
+import { LEVEL_1_LAYOUT, LEVEL_2_LAYOUT, LEVEL_3_LAYOUT, LEVEL_4_LAYOUT, type LevelLayout } from "../src/levels.ts";
 
 function distanceToSegment(
   point: { x: number; y: number },
@@ -82,4 +82,34 @@ test("level 1 keeps ten required motes safe and four pull-pocket choices risky",
 
 test("level 3 has a sixteen-mote safe detour and six paid-gate choices", () => {
   assertRouteContract(LEVEL_3_LAYOUT, 16, 6, 6);
+});
+
+test("the hollow keeps a ten-mote kindling road and four pocket lights", () => {
+  assertRouteContract(LEVEL_4_LAYOUT, 10, 4, 3);
+});
+
+test("the hollow plants five safe sockets and two pocket ones", () => {
+  const sockets = LEVEL_4_LAYOUT.sockets ?? [];
+  assert.equal(sockets.length, 7);
+  const start = { x: 220, y: 446 };
+  const beacon = { x: 2202, y: 245 };
+  const safe = sockets.slice(0, 5);
+  const route = [start, ...safe, beacon];
+  for (const [index, from] of route.slice(0, -1).entries()) {
+    const to = route[index + 1];
+    const clearance = Math.min(
+      ...LEVEL_4_LAYOUT.hazards.flatMap((loop) =>
+        loop.map((hazardStart, waypoint) =>
+          distanceBetweenSegments(from, to, hazardStart, loop[(waypoint + 1) % loop.length]),
+        ),
+      ),
+    );
+    assert.ok(clearance >= 200, `socket link ${index + 1}-${index + 2} has only ${clearance.toFixed(1)}px clearance`);
+  }
+  const risky = sockets.slice(5).filter((socket) =>
+    LEVEL_4_LAYOUT.hazards.some((loop) =>
+      loop.some((startPt, waypoint) => distanceToSegment(socket, startPt, loop[(waypoint + 1) % loop.length]) < 90),
+    ),
+  );
+  assert.equal(risky.length, 2);
 });

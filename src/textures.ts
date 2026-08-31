@@ -206,3 +206,43 @@ export function makeHazardTexture(scene: Phaser.Scene, key: string, radius: numb
     ctx.stroke();
   });
 }
+
+/** Cave vault: no stars, a warm-black lift toward the floor so water can read. */
+export function makeCaveSkyTexture(scene: Phaser.Scene, key: string, width: number, height: number): void {
+  makeCanvasTexture(scene, key, width, height, (ctx) => {
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, "#050308");
+    gradient.addColorStop(0.45, "#08060c");
+    gradient.addColorStop(1, "#120e16");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+  });
+}
+
+/** A standing warm glow - a planted lantern, taller than a mote so it reads as left behind. */
+export function makeLanternTexture(scene: Phaser.Scene, key: string): void {
+  makeCanvasTexture(scene, key, 72, 110, (ctx) => {
+    const g = ctx.createRadialGradient(36, 46, 0, 36, 52, 48);
+    g.addColorStop(0, "rgba(255,240,210,1)");
+    g.addColorStop(0.28, "rgba(255,196,110,0.75)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 72, 110);
+  });
+}
+
+/** A dim stone ring on the cave floor. Lit sockets keep using this, just brighter. */
+export function makeSocketTexture(scene: Phaser.Scene, key: string): void {
+  makeCanvasTexture(scene, key, 90, 56, (ctx) => {
+    ctx.strokeStyle = "rgba(210, 186, 130, 0.9)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(45, 30, 32, 14, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(140, 118, 78, 0.45)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(45, 30, 20, 8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+}

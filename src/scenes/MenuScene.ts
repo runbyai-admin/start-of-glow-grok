@@ -7,6 +7,7 @@ import {
   makeTreeTexture,
 } from "../textures";
 import { Ambience } from "../audio";
+import { LEVELS } from "../levels";
 import { VIEW_HEIGHT, VIEW_WIDTH } from "./dimensions";
 
 const ambience = new Ambience();
@@ -450,7 +451,11 @@ export class MenuScene extends Phaser.Scene {
     this.tweens.add({ targets: this.threshold, scale: 1.08, alpha: 1, duration: 520, ease: "Cubic.easeIn" });
     this.cameras.main.fadeOut(560, 5, 6, 12);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start("level", { levelIndex: 1, ambience });
+      const requested = Number(new URLSearchParams(window.location.search).get("glow-start"));
+      const replay = new URLSearchParams(window.location.search).has("glow-replay");
+      const levelIndex =
+        replay && Number.isInteger(requested) && requested >= 1 && requested <= LEVELS.length ? requested : 1;
+      this.scene.start("level", { levelIndex, ambience });
     });
   }
 

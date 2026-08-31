@@ -31,6 +31,9 @@ interface GlowTestState {
   deniedGathers?: number;
   touchedMotes?: number;
   gatheredMotes?: number;
+  /** Hollow only: lanterns planted this attempt, and the sockets that take them. */
+  planted?: number;
+  sockets?: Array<{ x: number; y: number; lit: boolean }>;
   /** Visible lumen-chain state; zero outside an active chain. */
   chain?: number;
   chainRemainingMs?: number;

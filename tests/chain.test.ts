@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { advanceChain, chainActiveForLevel, CHAIN_CAP, CHAIN_WINDOW_MS, emptyChain, expireChain, resetChain } from "../src/chain.ts";
 
-test("the lumen chain stays silent until the final clearing", () => {
+test("the lumen chain stays silent until the storm, and silent again in the hollow", () => {
   assert.equal(chainActiveForLevel(1), false);
   assert.equal(chainActiveForLevel(2), false);
   assert.equal(chainActiveForLevel(3), true);
+  assert.equal(chainActiveForLevel(4), false);
 });
 
 test("five consecutive pickups release exactly one bounded reward", () => {
