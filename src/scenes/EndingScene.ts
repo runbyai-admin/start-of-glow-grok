@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { makeGlowTexture, makeLanternTexture, makeSkyTexture } from "../textures";
+import { makeDawnSkyTexture, makeGlowTexture, makeLanternTexture, makeSkyTexture } from "../textures";
 import type { Ambience } from "../audio";
 import { LEVELS } from "../levels";
 import { VIEW_HEIGHT, VIEW_WIDTH } from "./dimensions";
@@ -64,13 +64,15 @@ export class EndingScene extends Phaser.Scene {
     makeSkyTexture(this, "sky", VIEW_WIDTH, VIEW_HEIGHT, 11);
     makeGlowTexture(this, "wisp", 85, "rgba(255,255,255,1)", "rgba(150,214,255,0.55)");
     makeLanternTexture(this, "lantern");
+    makeDawnSkyTexture(this, "dawn-sky", VIEW_WIDTH, VIEW_HEIGHT);
   }
 
   create(): void {
-    this.lights.enable().setAmbientColor(0x0a0d18);
-    this.cameras.main.setBackgroundColor(0x05060c);
+    const dawn = this.lanterns > 0;
+    this.lights.enable().setAmbientColor(dawn ? 0x1a1210 : 0x0a0d18);
+    this.cameras.main.setBackgroundColor(dawn ? 0x0c0808 : 0x05060c);
 
-    this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, "sky").setDepth(-100);
+    this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, dawn ? "dawn-sky" : "sky").setDepth(-100);
 
     const wisp = this.add
       .image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, "wisp")

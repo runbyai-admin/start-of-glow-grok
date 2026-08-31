@@ -1568,7 +1568,9 @@ export class LevelScene extends Phaser.Scene {
 
   private completeLevel(): void {
     this.locked = true;
-    const wasFlawless = this.collected >= this.totalMotes;
+    const wasFlawless = this.usingLanterns()
+      ? this.planted >= this.sockets.length && this.collected >= this.totalMotes
+      : this.collected >= this.totalMotes;
     const flawless = this.flawlessLevels + (wasFlawless ? 1 : 0);
     this.ambience.levelComplete(wasFlawless);
     // The arrival is a swell, not a switch. A camera flash paints the frame

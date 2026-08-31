@@ -219,6 +219,19 @@ export function makeCaveSkyTexture(scene: Phaser.Scene, key: string, width: numb
   });
 }
 
+/** Horizon lift for the ending that pays the hollow off - not the night forest. */
+export function makeDawnSkyTexture(scene: Phaser.Scene, key: string, width: number, height: number): void {
+  makeCanvasTexture(scene, key, width, height, (ctx) => {
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, "#0a0c18");
+    gradient.addColorStop(0.45, "#1a1420");
+    gradient.addColorStop(0.78, "#4a2a28");
+    gradient.addColorStop(1, "#c47848");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+  });
+}
+
 /** A standing warm glow - a planted lantern, taller than a mote so it reads as left behind. */
 export function makeLanternTexture(scene: Phaser.Scene, key: string): void {
   makeCanvasTexture(scene, key, 72, 110, (ctx) => {
