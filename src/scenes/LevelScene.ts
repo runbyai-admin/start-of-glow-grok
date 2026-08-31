@@ -25,6 +25,7 @@ import {
   type MoteArrival,
 } from "../reach";
 import {
+  HOLLOW_TOUCH_RESTORE,
   LANTERN_LIGHT_INTENSITY,
   LANTERN_LIGHT_RADIUS,
   nearestUnlitSocket,
@@ -842,7 +843,7 @@ export class LevelScene extends Phaser.Scene {
     socket.light = light;
     this.tweens.add({
       targets: lantern,
-      scale: 0.95,
+      scale: 1.35,
       duration: 420,
       ease: "Cubic.easeOut",
     });
@@ -1055,6 +1056,13 @@ export class LevelScene extends Phaser.Scene {
     }
   }
 
+  private breatheLanterns(time: number): void {
+    for (const socket of this.sockets) {
+      if (!socket.lit || !socket.light) continue;
+      socket.light.intensity = LANTERN_LIGHT_INTENSITY + Math.sin(time * 0.0024 + socket.x * 0.01) * 0.28;
+    }
+  }
+
   private drawSockets(time: number): void {
     this.socketRing.clear();
     if (this.sockets.length === 0 || this.locked) return;
@@ -1141,6 +1149,7 @@ export class LevelScene extends Phaser.Scene {
 
     this.drawReachRing(time);
     this.drawSockets(time);
+    this.breatheLanterns(time);
     this.inviteGather();
 
     const beforeExpiry = this.chainState;
@@ -1226,7 +1235,11 @@ export class LevelScene extends Phaser.Scene {
     if (chainActive) this.advanceChain();
     this.ambience.chime(this.collected, chainActive ? this.chainState.count : 1);
     const wasReady = reachReady(this.reach);
-    this.setReach(restoreReach(this.reach, arrival));
+    if (this.isHollow() && arrival === "touched") {
+      this.setReach(Math.min(REACH_MAX, this.reach + HOLLOW_TOUCH_RESTORE));
+    } else {
+      this.setReach(restoreReach(this.reach, arrival));
+    }
     if (arrival === "touched") this.touchedMotes += 1;
     else this.gatheredMotes += 1;
     if (!wasReady && reachReady(this.reach)) this.kindleReach();

@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { nearestUnlitSocket, requiredLanterns, socketInRange, SOCKET_RADIUS } from "../src/lantern.ts";
+import {
+  HOLLOW_TOUCH_RESTORE,
+  nearestUnlitSocket,
+  requiredLanterns,
+  socketInRange,
+  SOCKET_RADIUS,
+} from "../src/lantern.ts";
 import { REACH_MIN, REACH_READY, reachReady, spendReach } from "../src/reach.ts";
 
 test("a kindled press on a socket spends the glow the same way a forest pull does", () => {
@@ -26,4 +32,12 @@ test("five of seven lanterns open the heart", () => {
   assert.equal(requiredLanterns(5, 7), 5);
   assert.equal(requiredLanterns(5, 0), 0);
   assert.equal(requiredLanterns(9, 7), 7);
+});
+
+test("two walked motes in the hollow rekindle a plant", () => {
+  let reach = spendReach(REACH_READY);
+  reach = Math.min(REACH_READY, reach + HOLLOW_TOUCH_RESTORE);
+  assert.equal(reachReady(reach), false);
+  reach = Math.min(REACH_READY + 80, reach + HOLLOW_TOUCH_RESTORE);
+  assert.ok(reachReady(reach));
 });

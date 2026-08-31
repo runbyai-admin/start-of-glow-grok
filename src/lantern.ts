@@ -4,8 +4,10 @@
  * stays; motes in this zone only kindle the next plant.
  */
 export const SOCKET_RADIUS = 78;
-export const LANTERN_LIGHT_RADIUS = 300;
-export const LANTERN_LIGHT_INTENSITY = 1.45;
+export const LANTERN_LIGHT_RADIUS = 360;
+export const LANTERN_LIGHT_INTENSITY = 1.85;
+/** Two walked motes rekindle a plant. The forest still asks for five. */
+export const HOLLOW_TOUCH_RESTORE = 110;
 
 export interface SocketPoint {
   x: number;
