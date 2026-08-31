@@ -530,9 +530,26 @@ export class LevelScene extends Phaser.Scene {
     if (!this.isHollow()) return;
 
     const water = this.add
-      .rectangle(WORLD_WIDTH / 2, (WATER_Y + WORLD_HEIGHT) / 2, WORLD_WIDTH, WORLD_HEIGHT - WATER_Y, 0x0a1824, 0.38)
+      .rectangle(WORLD_WIDTH / 2, (WATER_Y + WORLD_HEIGHT) / 2, WORLD_WIDTH, WORLD_HEIGHT - WATER_Y, 0x0a1824, 0.42)
       .setDepth(-9);
     water.setPipeline("Light2D");
+    const shore = this.add.graphics().setDepth(-8);
+    shore.lineStyle(2, 0x6a7a88, 0.35);
+    shore.lineBetween(0, WATER_Y, WORLD_WIDTH, WATER_Y);
+
+    const rng = new Phaser.Math.RandomDataGenerator([`start-of-glow-vault-${this.config.index}`]);
+    const tints = MOOD_TINT.hollow.tree;
+    for (let i = 0; i < 7; i += 1) {
+      const x = 140 + (i / 6) * (WORLD_WIDTH - 280) + rng.between(-50, 50);
+      const spike = this.add
+        .image(x, -10, `tree-${i % 4}`)
+        .setOrigin(0.5, 1)
+        .setAngle(180)
+        .setScale(rng.realInRange(0.55, 0.95))
+        .setTint(tints[rng.between(0, tints.length - 1)])
+        .setDepth(-28);
+      spike.setPipeline("Light2D");
+    }
 
     const mist = this.add.particles(0, 0, "spark", {
       x: { min: -80, max: WORLD_WIDTH + 80 },
@@ -592,8 +609,14 @@ export class LevelScene extends Phaser.Scene {
     return Phaser.Math.Clamp(this.reach * ALERT_RADIUS_PER_REACH, ALERT_RADIUS_FLOOR, ALERT_RADIUS_CEILING);
   }
 
-  private hazardTimeScale(hazard: { alert: boolean; pressure: number; slowUntil: number }): number {
+  private hazardTimeScale(hazard: {
+    img: Phaser.GameObjects.Image;
+    alert: boolean;
+    pressure: number;
+    slowUntil: number;
+  }): number {
     if (hazard.slowUntil > this.time.now) return RADIANCE_TIME_SCALE;
+    if (this.lanternHaven(hazard.img.x, hazard.img.y)) return RADIANCE_TIME_SCALE;
     return 1 + (ALERT_TIME_SCALE - 1) * hazard.pressure;
   }
 
@@ -1365,6 +1388,22 @@ export class LevelScene extends Phaser.Scene {
     return this.sockets.length > 0;
   }
 
+  /** In the hollow, a planted lantern is the place the dark returns you. */
+  private lastLantern(): { x: number; y: number } {
+    for (let i = this.sockets.length - 1; i >= 0; i -= 1) {
+      if (this.sockets[i].lit) return { x: this.sockets[i].x, y: this.sockets[i].y };
+    }
+    return { x: START_X, y: START_Y };
+  }
+
+  private lanternHaven(x: number, y: number): boolean {
+    for (const socket of this.sockets) {
+      if (!socket.lit) continue;
+      if (Math.hypot(x - socket.x, y - socket.y) < LANTERN_LIGHT_RADIUS * 0.62) return true;
+    }
+    return false;
+  }
+
   private grow(): void {
     if (this.usingLanterns()) {
       this.growLanterns();
@@ -1503,9 +1542,10 @@ export class LevelScene extends Phaser.Scene {
     this.resetChain();
 
     this.after(560, () => {
-      this.target.set(START_X, START_Y);
-      this.wisp.setPosition(START_X, START_Y);
-      this.wispLight.setPosition(START_X, START_Y);
+      const haven = this.lastLantern();
+      this.target.set(haven.x, haven.y);
+      this.wisp.setPosition(haven.x, haven.y);
+      this.wispLight.setPosition(haven.x, haven.y);
       // What a shadow takes is your light, not your work. The old fail wiped
       // the level's motes and started it again, which at twenty seconds in is
       // the moment a player stops playing - and it punished the one thing the
