@@ -299,13 +299,14 @@ export class LevelScene extends Phaser.Scene {
     if (this.isHollow()) {
       for (let i = 0; i < 9; i += 1) {
         const x = 80 + (i / 8) * (WORLD_WIDTH - 160) + rng.between(-40, 40);
-        const stone = this.add
-          .image(x, 0, `tree-${i % 4}`)
-          .setOrigin(0.5, 0)
-          .setScale(rng.realInRange(0.7, 1.15), -rng.realInRange(0.55, 0.95))
-          .setTint(tints[rng.between(0, tints.length - 1)])
+        this.add
+          .image(x, 12, `tree-${i % 4}`)
+          .setOrigin(0.5, 1)
+          .setAngle(180)
+          .setScale(rng.realInRange(0.7, 1.1))
+          .setTint([0x2a2438, 0x241e30, 0x1e1828][rng.between(0, 2)])
+          .setAlpha(0.95)
           .setDepth(-30);
-        stone.setPipeline("Light2D");
       }
     } else {
       for (let i = 0; i < TREE_COUNT; i += 1) {
