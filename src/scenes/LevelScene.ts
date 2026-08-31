@@ -296,16 +296,28 @@ export class LevelScene extends Phaser.Scene {
   private buildForest(): void {
     const rng = new Phaser.Math.RandomDataGenerator([`start-of-glow-trees-${this.config.index}`]);
     const tints = MOOD_TINT[this.config.mood].tree;
-    const count = this.isHollow() ? 8 : TREE_COUNT;
-    for (let i = 0; i < count; i += 1) {
-      const x = 60 + (i / Math.max(1, count - 1)) * (WORLD_WIDTH - 120) + rng.between(-45, 45);
-      const tree = this.add
-        .image(x, WORLD_HEIGHT - 120 + rng.between(-8, 8), `tree-${i % 4}`)
-        .setOrigin(0.5, 1)
-        .setScale(rng.realInRange(this.isHollow() ? 1.05 : 0.75, this.isHollow() ? 1.55 : 1.3))
-        .setTint(tints[rng.between(0, tints.length - 1)])
-        .setDepth(-30);
-      tree.setPipeline("Light2D");
+    if (this.isHollow()) {
+      for (let i = 0; i < 9; i += 1) {
+        const x = 80 + (i / 8) * (WORLD_WIDTH - 160) + rng.between(-40, 40);
+        const stone = this.add
+          .image(x, 0, `tree-${i % 4}`)
+          .setOrigin(0.5, 0)
+          .setScale(rng.realInRange(0.7, 1.15), -rng.realInRange(0.55, 0.95))
+          .setTint(tints[rng.between(0, tints.length - 1)])
+          .setDepth(-30);
+        stone.setPipeline("Light2D");
+      }
+    } else {
+      for (let i = 0; i < TREE_COUNT; i += 1) {
+        const x = 60 + (i / (TREE_COUNT - 1)) * (WORLD_WIDTH - 120) + rng.between(-45, 45);
+        const tree = this.add
+          .image(x, WORLD_HEIGHT - 120 + rng.between(-8, 8), `tree-${i % 4}`)
+          .setOrigin(0.5, 1)
+          .setScale(rng.realInRange(0.75, 1.3))
+          .setTint(tints[rng.between(0, tints.length - 1)])
+          .setDepth(-30);
+        tree.setPipeline("Light2D");
+      }
     }
 
     const ground = this.add
@@ -536,20 +548,6 @@ export class LevelScene extends Phaser.Scene {
     const shore = this.add.graphics().setDepth(-8);
     shore.lineStyle(2, 0x6a7a88, 0.35);
     shore.lineBetween(0, WATER_Y, WORLD_WIDTH, WATER_Y);
-
-    const rng = new Phaser.Math.RandomDataGenerator([`start-of-glow-vault-${this.config.index}`]);
-    const tints = MOOD_TINT.hollow.tree;
-    for (let i = 0; i < 7; i += 1) {
-      const x = 140 + (i / 6) * (WORLD_WIDTH - 280) + rng.between(-50, 50);
-      const spike = this.add
-        .image(x, -10, `tree-${i % 4}`)
-        .setOrigin(0.5, 1)
-        .setAngle(180)
-        .setScale(rng.realInRange(0.55, 0.95))
-        .setTint(tints[rng.between(0, tints.length - 1)])
-        .setDepth(-28);
-      spike.setPipeline("Light2D");
-    }
 
     const mist = this.add.particles(0, 0, "spark", {
       x: { min: -80, max: WORLD_WIDTH + 80 },
