@@ -452,9 +452,8 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.fadeOut(560, 5, 6, 12);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       const requested = Number(new URLSearchParams(window.location.search).get("glow-start"));
-      const replay = new URLSearchParams(window.location.search).has("glow-replay");
       const levelIndex =
-        replay && Number.isInteger(requested) && requested >= 1 && requested <= LEVELS.length ? requested : 1;
+        Number.isInteger(requested) && requested >= 1 && requested <= LEVELS.length ? requested : 1;
       this.scene.start("level", { levelIndex, ambience });
     });
   }
