@@ -189,6 +189,7 @@ export class LevelScene extends Phaser.Scene {
   private hangingStone: Array<{ img: Phaser.GameObjects.Image; base: number }> = [];
   private risingStone: Phaser.GameObjects.Image[] = [];
   private waterMark?: Phaser.GameObjects.Graphics;
+  private wispReflection?: Phaser.GameObjects.Image;
 
   private collected = 0;
   /** Motes actually placed this level - derived from the data used, never assumed from config. */
@@ -248,6 +249,7 @@ export class LevelScene extends Phaser.Scene {
     this.hangingStone = [];
     this.risingStone = [];
     this.waterMark = undefined;
+    this.wispReflection = undefined;
     this.target.set(START_X, START_Y);
   }
 
@@ -471,6 +473,14 @@ export class LevelScene extends Phaser.Scene {
 
     this.wisp = this.add.image(this.target.x, this.target.y, "wisp").setBlendMode(Phaser.BlendModes.ADD).setScale(0.5).setDepth(10);
     this.wispLight = this.lights.addLight(this.wisp.x, this.wisp.y, REACH_START, 0xbfe4ff, 1.6);
+    if (this.isHollow()) {
+      this.wispReflection = this.add
+        .image(this.wisp.x, WATER_Y * 2 - this.wisp.y, "wisp")
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAlpha(0.22)
+        .setScale(0.32, -0.28)
+        .setDepth(-7);
+    }
     this.trail.startFollow(this.wisp);
 
     // The edge of the light, drawn thin. Light2D already falls off at exactly
@@ -1378,6 +1388,13 @@ export class LevelScene extends Phaser.Scene {
     this.wisp.x += dx;
     this.wisp.y += dy;
     this.wispLight.setPosition(this.wisp.x, this.wisp.y);
+    if (this.wispReflection) {
+      if (this.wisp.y < WATER_Y) {
+        this.wispReflection.setPosition(this.wisp.x, WATER_Y * 2 - this.wisp.y + 8).setAlpha(0.22);
+      } else {
+        this.wispReflection.setAlpha(0);
+      }
+    }
     if (this.isHollow() && inUnstillWater({ x: this.wisp.x, y: this.wisp.y }, this.sockets, WATER_Y, this.requiredSockets())) {
       this.wisp.setTint(0xa8d4ec);
     } else {
