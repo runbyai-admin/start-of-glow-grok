@@ -355,6 +355,22 @@ export function makeHeartTexture(scene: Phaser.Scene, key: string): void {
     ctx.lineTo(68, 82);
     ctx.closePath();
     ctx.fill();
+
+    ctx.fillStyle = "rgba(255, 214, 160, 0.7)";
+    ctx.beginPath();
+    ctx.moveTo(90, 52);
+    ctx.lineTo(138, 88);
+    ctx.lineTo(118, 148);
+    ctx.lineTo(90, 120);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(90, 52);
+    ctx.lineTo(42, 88);
+    ctx.lineTo(62, 148);
+    ctx.lineTo(90, 120);
+    ctx.closePath();
+    ctx.fill();
   });
 }
 
