@@ -1679,6 +1679,7 @@ export class LevelScene extends Phaser.Scene {
       if (hazard.banished) continue;
       if (!this.lanternHaven(hazard.img.x, hazard.img.y)) continue;
       hazard.banished = true;
+      this.setReach(Math.min(REACH_MAX, this.reach + HOLLOW_TOUCH_RESTORE));
       if (hazard.tween) hazard.tween.timeScale = 0;
       this.tweens.add({
         targets: hazard.img,
