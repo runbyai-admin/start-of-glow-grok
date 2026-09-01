@@ -344,6 +344,7 @@ export class LevelScene extends Phaser.Scene {
   private buildBeacon(): void {
     const key = this.isHollow() ? "heart" : "beacon";
     this.beacon = this.add.image(BEACON_X, BEACON_Y, key).setBlendMode(Phaser.BlendModes.ADD).setDepth(-35).setAlpha(0.05);
+    if (this.isHollow()) this.beacon.setScale(1.45);
     this.beaconLight = this.lights.addLight(BEACON_X, BEACON_Y, 260, 0xffcf8a, 0);
   }
 
@@ -869,7 +870,20 @@ export class LevelScene extends Phaser.Scene {
       return;
     }
     if (this.tryPlant()) return;
+    if (this.isHollow() && !this.moteInReach()) {
+      this.deniedGathers += 1;
+      this.gatherDenied();
+      this.reportState();
+      return;
+    }
     this.gather();
+  }
+
+  private moteInReach(): boolean {
+    for (const mote of this.motes) {
+      if (Phaser.Math.Distance.Between(mote.x, mote.y, this.wisp.x, this.wisp.y) <= this.reach) return true;
+    }
+    return false;
   }
 
   /** Spend a kindled glow to leave a lantern on the nearest unlit socket. */
