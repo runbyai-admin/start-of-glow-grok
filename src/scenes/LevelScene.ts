@@ -909,9 +909,8 @@ export class LevelScene extends Phaser.Scene {
       }
     }
 
-    const spent = this.reach;
     this.setReach(spendReach(this.reach));
-    this.gatherWave(spent, 1);
+    this.gatherWave(90, 1);
     this.ambience.plant();
     this.pulseBoost = 1.1;
 
