@@ -747,8 +747,9 @@ export class LevelScene extends Phaser.Scene {
     }
     if (!inReach) return;
     this.inviteAt = this.time.now + 2100;
+    const ghostR = this.isHollow() ? 90 : this.reach;
     const ghost = this.add
-      .circle(this.wisp.x, this.wisp.y, this.reach, 0xffe2a8, 0)
+      .circle(this.wisp.x, this.wisp.y, ghostR, 0xffe2a8, 0)
       .setStrokeStyle(2, 0xffe2a8, 0.3)
       .setDepth(4);
     this.tweens.add({
