@@ -103,6 +103,19 @@ test("a standing lamp-road carries you a little faster than the dry cave", () =>
   assert.equal(waterSpeedScale({ x: 500, y: 200 }, sockets), 1);
 });
 
+test("optional sockets stay quiet until the road has three lamps", () => {
+  const sockets = [
+    { x: 290, y: 450, lit: true },
+    { x: 760, y: 470, lit: true },
+    { x: 1140, y: 400, lit: false },
+    { x: 1580, y: 290, lit: false },
+    { x: 2000, y: 250, lit: false },
+    { x: 800, y: 130, lit: false },
+    { x: 1360, y: 660, lit: false },
+  ];
+  assert.equal(lanternThreads(sockets, 5).length, 1);
+});
+
 test("optional sockets hang off the nearest road lamp, not the last heart socket", () => {
   const sockets = [
     { x: 290, y: 450, lit: true },
@@ -114,7 +127,7 @@ test("optional sockets hang off the nearest road lamp, not the last heart socket
     { x: 1360, y: 660, lit: false },
   ];
   const threads = lanternThreads(sockets, 5);
-  assert.equal(threads.length, 6);
+  assert.equal(threads.length, 6); // 4 road + 2 optional once the road is lit
   const optional = threads.slice(4);
   assert.equal(optional[0].from.x, 760);
   assert.equal(optional[1].from.x, 1140);

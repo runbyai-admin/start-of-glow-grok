@@ -124,6 +124,9 @@ export function lanternThreads(
     if (!sockets[i + 1].lit) break;
   }
   const litRoad = sockets.slice(0, road).filter((s) => s.lit);
+  // Optional pockets stay quiet until the road has a few lamps, so the first
+  // ten seconds are one gold line, not a star of threads off the first plant.
+  if (litRoad.length < 3) return threads;
   for (let i = road; i < sockets.length; i += 1) {
     if (litRoad.length === 0) continue;
     let nearest = litRoad[0];
