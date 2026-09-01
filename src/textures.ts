@@ -232,15 +232,129 @@ export function makeDawnSkyTexture(scene: Phaser.Scene, key: string, width: numb
   });
 }
 
-/** A standing warm glow - a planted lantern, taller than a mote so it reads as left behind. */
+/**
+ * A standing lamp, not a mote. Stem, cage, and a globe bigger than the wisp
+ * that planted it - the hollow's "I left a light" tell.
+ */
 export function makeLanternTexture(scene: Phaser.Scene, key: string): void {
-  makeCanvasTexture(scene, key, 72, 110, (ctx) => {
-    const g = ctx.createRadialGradient(36, 46, 0, 36, 52, 48);
-    g.addColorStop(0, "rgba(255,240,210,1)");
-    g.addColorStop(0.28, "rgba(255,196,110,0.75)");
+  makeCanvasTexture(scene, key, 96, 160, (ctx) => {
+    const glow = ctx.createRadialGradient(48, 52, 0, 48, 58, 46);
+    glow.addColorStop(0, "rgba(255,244,214,1)");
+    glow.addColorStop(0.28, "rgba(255,186,92,0.8)");
+    glow.addColorStop(1, "rgba(255,140,40,0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, 96, 120);
+
+    ctx.fillStyle = "rgba(58, 36, 18, 0.95)";
+    ctx.fillRect(45, 72, 6, 78);
+    ctx.fillRect(38, 146, 20, 6);
+
+    ctx.strokeStyle = "rgba(90, 58, 28, 0.85)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(36, 34, 24, 34);
+    ctx.beginPath();
+    ctx.moveTo(48, 34);
+    ctx.lineTo(48, 68);
+    ctx.moveTo(36, 51);
+    ctx.lineTo(60, 51);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255, 236, 190, 0.95)";
+    ctx.beginPath();
+    ctx.arc(48, 50, 10, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+/** Hanging stone: wide at the vault, tapering to a point. No branches. */
+export function makeStalactiteTexture(
+  scene: Phaser.Scene,
+  key: string,
+  width: number,
+  height: number,
+  seed: number,
+): void {
+  makeCanvasTexture(scene, key, width, height, (ctx) => {
+    const rng = new Phaser.Math.RandomDataGenerator([String(seed)]);
+    ctx.fillStyle = "#ffffff";
+    const top = width / 2;
+    ctx.beginPath();
+    ctx.moveTo(width * 0.04, 0);
+    ctx.lineTo(width * 0.96, 0);
+    const lumps = rng.between(4, 6);
+    for (let i = 1; i <= lumps; i += 1) {
+      const t = i / lumps;
+      const y = height * t;
+      const half = (width * 0.46) * (1 - t * 0.94) * rng.realInRange(0.78, 1.12);
+      ctx.lineTo(top + half, y);
+    }
+    ctx.lineTo(top, height);
+    for (let i = lumps; i >= 1; i -= 1) {
+      const t = i / lumps;
+      const y = height * t;
+      const half = (width * 0.46) * (1 - t * 0.94) * rng.realInRange(0.78, 1.12);
+      ctx.lineTo(top - half, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  });
+}
+
+/** Closed vault band along the top of the cave - the sky is gone. */
+export function makeCaveCeilingTexture(
+  scene: Phaser.Scene,
+  key: string,
+  width: number,
+  height: number,
+  seed: number,
+): void {
+  makeCanvasTexture(scene, key, width, height, (ctx) => {
+    const rng = new Phaser.Math.RandomDataGenerator([String(seed)]);
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(width, 0);
+    ctx.lineTo(width, height * 0.35);
+    const steps = 14;
+    for (let i = steps; i >= 0; i -= 1) {
+      const x = (width / steps) * i;
+      const y = height * rng.realInRange(0.4, 0.95);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  });
+}
+
+/** The hollow's heart: a warm crystal, not the forest beacon. */
+export function makeHeartTexture(scene: Phaser.Scene, key: string): void {
+  makeCanvasTexture(scene, key, 180, 180, (ctx) => {
+    const g = ctx.createRadialGradient(90, 90, 0, 90, 90, 90);
+    g.addColorStop(0, "rgba(255,236,200,1)");
+    g.addColorStop(0.28, "rgba(255,176,96,0.75)");
+    g.addColorStop(0.62, "rgba(210,120,70,0.28)");
     g.addColorStop(1, "rgba(0,0,0,0)");
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 72, 110);
+    ctx.fillRect(0, 0, 180, 180);
+
+    ctx.fillStyle = "rgba(255, 230, 190, 0.9)";
+    ctx.beginPath();
+    ctx.moveTo(90, 28);
+    ctx.lineTo(124, 78);
+    ctx.lineTo(108, 150);
+    ctx.lineTo(72, 150);
+    ctx.lineTo(56, 78);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255, 200, 130, 0.55)";
+    ctx.beginPath();
+    ctx.moveTo(90, 46);
+    ctx.lineTo(112, 82);
+    ctx.lineTo(90, 132);
+    ctx.lineTo(68, 82);
+    ctx.closePath();
+    ctx.fill();
   });
 }
 

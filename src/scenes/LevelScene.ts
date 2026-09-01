@@ -1,13 +1,16 @@
 import Phaser from "phaser";
 import {
+  makeCaveCeilingTexture,
   makeCaveSkyTexture,
   makeGlowTexture,
   makeGroundTexture,
   makeHazardTexture,
+  makeHeartTexture,
   makeHillsTexture,
   makeLanternTexture,
   makeSkyTexture,
   makeSocketTexture,
+  makeStalactiteTexture,
   makeTreeTexture,
 } from "../textures";
 import type { Ambience } from "../audio";
@@ -28,8 +31,13 @@ import {
   HOLLOW_TOUCH_RESTORE,
   LANTERN_LIGHT_INTENSITY,
   LANTERN_LIGHT_RADIUS,
+  WATER_SINK_SCALE,
+  WATER_Y,
+  inUnstillWater,
+  lanternHaven as pointInLanternHaven,
   nearestUnlitSocket,
   requiredLanterns,
+  waterSpeedScale,
 } from "../lantern";
 
 const COLLECT_RADIUS = 45;
@@ -107,9 +115,6 @@ const MOOD_TINT: Record<LevelConfig["mood"], { tree: number[]; ground: number; h
   hollow: { tree: [0x1a1218, 0x140e14, 0x100c12], ground: 0x0c0810, hillsTint: 0x0a080e },
 };
 
-/** Still water line in the hollow - lanterns above it throw a dim reflection. */
-const WATER_Y = 560;
-
 /**
  * The reusable stage. One scene, driven entirely by LevelConfig data (see
  * src/levels.ts) - three levels means three configs, not three classes.
@@ -141,6 +146,8 @@ export class LevelScene extends Phaser.Scene {
     /** 0 at the edge of notice, 1 at hunting range - the speed-up ramps across it. */
     pressure: number;
     slowUntil: number;
+    /** Hollow: a lantern washed this shadow into light. */
+    banished: boolean;
   }> = [];
 
   private hud!: Phaser.GameObjects.Text;
@@ -246,8 +253,11 @@ export class LevelScene extends Phaser.Scene {
     makeGroundTexture(this, "ground", WORLD_WIDTH, 240, 7);
     makeLanternTexture(this, "lantern");
     makeSocketTexture(this, "socket");
+    makeHeartTexture(this, "heart");
+    makeCaveCeilingTexture(this, "cave-ceiling", WORLD_WIDTH, 220, 4);
     for (let i = 0; i < 4; i += 1) {
       makeTreeTexture(this, `tree-${i}`, 240, 560, i + 1);
+      makeStalactiteTexture(this, `stalactite-${i}`, 90 + i * 18, 220 + i * 50, i + 11);
     }
   }
 
@@ -264,6 +274,7 @@ export class LevelScene extends Phaser.Scene {
     this.buildForest();
     this.buildBeacon();
     this.buildFireflies();
+    this.buildDrips();
     this.buildMotes();
     this.buildSockets();
     this.buildWisp();
@@ -297,15 +308,14 @@ export class LevelScene extends Phaser.Scene {
     const rng = new Phaser.Math.RandomDataGenerator([`start-of-glow-trees-${this.config.index}`]);
     const tints = MOOD_TINT[this.config.mood].tree;
     if (this.isHollow()) {
-      for (let i = 0; i < 9; i += 1) {
-        const x = 80 + (i / 8) * (WORLD_WIDTH - 160) + rng.between(-40, 40);
+      this.add.image(0, 0, "cave-ceiling").setOrigin(0, 0).setTint(0x161018).setDepth(-32);
+      for (let i = 0; i < 16; i += 1) {
+        const x = 50 + (i / 15) * (WORLD_WIDTH - 100) + rng.between(-28, 28);
         this.add
-          .image(x, 12, `tree-${i % 4}`)
-          .setOrigin(0.5, 1)
-          .setAngle(180)
-          .setScale(rng.realInRange(0.7, 1.1))
-          .setTint([0x2a2438, 0x241e30, 0x1e1828][rng.between(0, 2)])
-          .setAlpha(0.95)
+          .image(x, -8, `stalactite-${i % 4}`)
+          .setOrigin(0.5, 0)
+          .setScale(rng.realInRange(0.85, 1.35))
+          .setTint([0x2a2436, 0x221c2c, 0x1c1826][rng.between(0, 2)])
           .setDepth(-30);
       }
     } else {
@@ -331,11 +341,13 @@ export class LevelScene extends Phaser.Scene {
 
   /** Dark until every mote in the level is found - then it lights, and pulls the player in for the arrival. */
   private buildBeacon(): void {
-    this.beacon = this.add.image(BEACON_X, BEACON_Y, "beacon").setBlendMode(Phaser.BlendModes.ADD).setDepth(-35).setAlpha(0.05);
+    const key = this.isHollow() ? "heart" : "beacon";
+    this.beacon = this.add.image(BEACON_X, BEACON_Y, key).setBlendMode(Phaser.BlendModes.ADD).setDepth(-35).setAlpha(0.05);
     this.beaconLight = this.lights.addLight(BEACON_X, BEACON_Y, 260, 0xffcf8a, 0);
   }
 
   private buildFireflies(): void {
+    if (this.isHollow()) return;
     const rng = new Phaser.Math.RandomDataGenerator([`start-of-glow-fireflies-${this.config.index}`]);
     for (let i = 0; i < FIREFLY_COUNT; i += 1) {
       const startX = rng.between(60, WORLD_WIDTH - 60);
@@ -367,6 +379,26 @@ export class LevelScene extends Phaser.Scene {
         delay: rng.between(0, 800),
       });
     }
+  }
+
+  /** The cave weeps. Drips are atmosphere, not a second hazard. */
+  private buildDrips(): void {
+    if (!this.isHollow()) return;
+    const drips = this.add.particles(0, 0, "spark", {
+      x: { min: 40, max: WORLD_WIDTH - 40 },
+      y: { min: 4, max: 36 },
+      speedX: { min: -10, max: 10 },
+      speedY: { min: 70, max: 150 },
+      gravityY: 90,
+      lifespan: { min: 1600, max: 2800 },
+      scale: { start: 0.38, end: 0.04 },
+      alpha: { start: 0.42, end: 0 },
+      quantity: 1,
+      frequency: 160,
+      tint: [0xb7cce0, 0xd4e2ee, 0x9aadc2],
+      blendMode: Phaser.BlendModes.ADD,
+    });
+    drips.setDepth(-4);
   }
 
   private buildMotes(): void {
@@ -464,7 +496,7 @@ export class LevelScene extends Phaser.Scene {
         .setDepth(6)
         .setScale(rng.realInRange(0.85, 1.15));
       const light = this.lights.addLight(0, 0, 130, 0x9a6efa, CALM_LIGHT_INTENSITY);
-      const hazard = { img, light, alert: false, pressure: 0, slowUntil: 0 };
+      const hazard = { img, light, alert: false, pressure: 0, slowUntil: 0, banished: false };
       this.hazards.push(hazard);
 
       const waypoints: Phaser.Math.Vector2[] = [];
@@ -536,19 +568,25 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /**
-   * The hollow's identity: still water, slow mist, and dim stone rings that
-   * take a kindled press. Forest levels skip this entire layer.
+   * The hollow's identity: still water that holds you, hanging stone, and dim
+   * rings that take a kindled press. Forest levels skip this entire layer.
    */
   private buildHollow(): void {
     if (!this.isHollow()) return;
 
     const water = this.add
-      .rectangle(WORLD_WIDTH / 2, (WATER_Y + WORLD_HEIGHT) / 2, WORLD_WIDTH, WORLD_HEIGHT - WATER_Y, 0x0a1824, 0.42)
+      .rectangle(WORLD_WIDTH / 2, (WATER_Y + WORLD_HEIGHT) / 2, WORLD_WIDTH, WORLD_HEIGHT - WATER_Y, 0x07141e, 0.72)
       .setDepth(-9);
     water.setPipeline("Light2D");
     const shore = this.add.graphics().setDepth(-8);
-    shore.lineStyle(2, 0x6a7a88, 0.35);
+    shore.lineStyle(2.5, 0x8aa0b4, 0.38);
     shore.lineBetween(0, WATER_Y, WORLD_WIDTH, WATER_Y);
+    const rng = new Phaser.Math.RandomDataGenerator(["start-of-glow-hollow-shore"]);
+    shore.lineStyle(1.2, 0x6a8498, 0.18);
+    for (let i = 0; i < 18; i += 1) {
+      const x = 80 + (i / 17) * (WORLD_WIDTH - 160) + rng.between(-40, 40);
+      shore.strokeEllipse(x, WATER_Y + rng.between(10, 28), rng.between(36, 90), rng.between(6, 14));
+    }
 
     const mist = this.add.particles(0, 0, "spark", {
       x: { min: -80, max: WORLD_WIDTH + 80 },
@@ -613,14 +651,16 @@ export class LevelScene extends Phaser.Scene {
     alert: boolean;
     pressure: number;
     slowUntil: number;
+    banished: boolean;
   }): number {
     if (hazard.slowUntil > this.time.now) return RADIANCE_TIME_SCALE;
+    if (hazard.banished) return 0;
     if (this.lanternHaven(hazard.img.x, hazard.img.y)) return RADIANCE_TIME_SCALE;
     return 1 + (ALERT_TIME_SCALE - 1) * hazard.pressure;
   }
 
   private patrol(
-    hazard: { img: Phaser.GameObjects.Image; light: Phaser.GameObjects.Light; tween?: Phaser.Tweens.Tween; alert: boolean; pressure: number; slowUntil: number },
+    hazard: { img: Phaser.GameObjects.Image; light: Phaser.GameObjects.Light; tween?: Phaser.Tweens.Tween; alert: boolean; pressure: number; slowUntil: number; banished: boolean },
     waypoints: Phaser.Math.Vector2[],
     index: number,
   ): void {
@@ -856,16 +896,16 @@ export class LevelScene extends Phaser.Scene {
     socket.lit = true;
     socket.img.setAlpha(0.2);
     const lantern = this.add
-      .image(socket.x, socket.y - 18, "lantern")
+      .image(socket.x, socket.y - 28, "lantern")
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setScale(0.2)
+      .setScale(0.25)
       .setDepth(6);
-    const light = this.lights.addLight(socket.x, socket.y - 10, LANTERN_LIGHT_RADIUS, 0xffe0a8, 0.2);
+    const light = this.lights.addLight(socket.x, socket.y - 18, LANTERN_LIGHT_RADIUS, 0xffe0a8, 0.2);
     socket.lantern = lantern;
     socket.light = light;
     this.tweens.add({
       targets: lantern,
-      scale: 1.35,
+      scale: 1.45,
       duration: 420,
       ease: "Cubic.easeOut",
     });
@@ -886,6 +926,7 @@ export class LevelScene extends Phaser.Scene {
       this.tweens.add({ targets: reflection, alpha: 0.28, duration: 700, ease: "Sine.easeOut" });
     }
     this.planted += 1;
+    this.washShadows();
     this.showGatherCost();
     this.grow();
     this.reportState();
@@ -1131,11 +1172,16 @@ export class LevelScene extends Phaser.Scene {
     if (this.locked) return;
 
     const dt = delta / 1000;
-    const step = dt * WISP_MAX_SPEED;
+    const here = { x: this.wisp.x, y: this.wisp.y };
+    const drag = this.isHollow() ? waterSpeedScale(here, this.sockets) : 1;
+    const step = dt * WISP_MAX_SPEED * drag;
     if (this.cursors.left.isDown || this.wasd.left.isDown) this.target.x -= step;
     if (this.cursors.right.isDown || this.wasd.right.isDown) this.target.x += step;
     if (this.cursors.up.isDown || this.wasd.up.isDown) this.target.y -= step;
     if (this.cursors.down.isDown || this.wasd.down.isDown) this.target.y += step;
+    if (this.isHollow() && inUnstillWater(here, this.sockets)) {
+      this.target.y += step * WATER_SINK_SCALE;
+    }
     this.target.x = Phaser.Math.Clamp(this.target.x, 27, WORLD_WIDTH - 27);
     this.target.y = Phaser.Math.Clamp(this.target.y, 27, WORLD_HEIGHT - 27);
 
@@ -1154,7 +1200,7 @@ export class LevelScene extends Phaser.Scene {
     let dx = easedX - this.wisp.x;
     let dy = easedY - this.wisp.y;
     const moveDist = Math.sqrt(dx * dx + dy * dy);
-    const maxStep = WISP_MAX_SPEED * dt;
+    const maxStep = WISP_MAX_SPEED * dt * drag;
     if (moveDist > maxStep && moveDist > 0) {
       const scale = maxStep / moveDist;
       dx *= scale;
@@ -1183,6 +1229,7 @@ export class LevelScene extends Phaser.Scene {
       this.hazardTrail.emitParticleAt(h.img.x, h.img.y, 1);
     }
     this.checkHazardAlerts();
+    if (this.isHollow()) this.washShadows();
 
     if (time > this.graceUntil) {
       this.checkHazardCollisions();
@@ -1211,6 +1258,7 @@ export class LevelScene extends Phaser.Scene {
 
   private checkHazardCollisions(): void {
     for (const h of this.hazards) {
+      if (h.banished) continue;
       if (Phaser.Math.Distance.Between(h.img.x, h.img.y, this.wisp.x, this.wisp.y) <= HAZARD_RADIUS) {
         this.fail();
         return;
@@ -1396,11 +1444,31 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private lanternHaven(x: number, y: number): boolean {
-    for (const socket of this.sockets) {
-      if (!socket.lit) continue;
-      if (Math.hypot(x - socket.x, y - socket.y) < LANTERN_LIGHT_RADIUS * 0.62) return true;
+    return pointInLanternHaven({ x, y }, this.sockets);
+  }
+
+  /** A planted lantern washes any shadow standing in its pool into light. */
+  private washShadows(): void {
+    for (const hazard of this.hazards) {
+      if (hazard.banished) continue;
+      if (!this.lanternHaven(hazard.img.x, hazard.img.y)) continue;
+      hazard.banished = true;
+      if (hazard.tween) hazard.tween.timeScale = 0;
+      this.tweens.add({
+        targets: hazard.img,
+        alpha: 0,
+        scale: hazard.img.scale * 1.6,
+        duration: 420,
+        ease: "Cubic.easeOut",
+      });
+      this.tweens.add({
+        targets: hazard.light,
+        intensity: 0,
+        duration: 280,
+        ease: "Sine.easeOut",
+      });
+      this.trail.explode(22, hazard.img.x, hazard.img.y);
     }
-    return false;
   }
 
   private grow(): void {

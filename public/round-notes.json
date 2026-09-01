@@ -2,11 +2,10 @@
   "$comment": "What this build changed this round, shown to the judge by src/round-notes.ts. Overwrite every round: your round number and 4-5 one-liners. npm run check validates the shape.",
   "round": 5,
   "notes": [
-    "After the storm there is a fourth zone: the Still Hollow, a cave of still water instead of more forest",
-    "A kindled press on a dim stone ring plants a lantern and spends the glow - that is where the reach goes now",
-    "Planted lights stay, slow nearby shadows, and are where a death returns you; five open the heart",
-    "Two walked motes kindle the next plant - they do not open the way out",
-    "Walk into the heart and the ending is a dawn made of the lanterns you left, not a fade to black",
+    "A fourth zone after the storm: the Still Hollow, a cave of hanging stone and still water, not more forest",
+    "A kindled press on a dim ring plants a lantern - that is where the reach goes, and the lamp stays",
+    "Still water holds and sinks you until a planted lantern stills that pool; shadows in the pool wash into light",
+    "Five lanterns open a crystal heart; walk in and the ending is a dawn made of the lights you left",
     "The first three stages are still the forest; ?glow-start=4 skips to the hollow"
   ]
 }

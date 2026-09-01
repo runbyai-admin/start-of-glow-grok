@@ -2,10 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   HOLLOW_TOUCH_RESTORE,
+  WATER_SPEED_SCALE,
+  WATER_Y,
+  inUnstillWater,
+  lanternHaven,
   nearestUnlitSocket,
   requiredLanterns,
   socketInRange,
   SOCKET_RADIUS,
+  waterSpeedScale,
 } from "../src/lantern.ts";
 import { REACH_MIN, REACH_READY, reachReady, spendReach } from "../src/reach.ts";
 
@@ -40,4 +45,25 @@ test("two walked motes in the hollow rekindle a plant", () => {
   assert.equal(reachReady(reach), false);
   reach = Math.min(REACH_READY + 80, reach + HOLLOW_TOUCH_RESTORE);
   assert.ok(reachReady(reach));
+});
+
+test("unstilled water holds the wisp, a planted lantern stills that pool", () => {
+  const sockets = [
+    { x: 400, y: 450, lit: false },
+    { x: 800, y: 660, lit: true },
+  ];
+  assert.equal(inUnstillWater({ x: 220, y: 446 }, sockets), false);
+  assert.equal(inUnstillWater({ x: 400, y: WATER_Y + 40 }, sockets), true);
+  assert.equal(waterSpeedScale({ x: 400, y: WATER_Y + 40 }, sockets), WATER_SPEED_SCALE);
+  assert.equal(inUnstillWater({ x: 800, y: WATER_Y + 40 }, sockets), false);
+  assert.equal(waterSpeedScale({ x: 800, y: WATER_Y + 40 }, sockets), 1);
+});
+
+test("a planted lantern's pool is a haven", () => {
+  const sockets = [
+    { x: 290, y: 450, lit: true },
+    { x: 760, y: 470, lit: false },
+  ];
+  assert.equal(lanternHaven({ x: 300, y: 440 }, sockets), true);
+  assert.equal(lanternHaven({ x: 760, y: 470 }, sockets), false);
 });
