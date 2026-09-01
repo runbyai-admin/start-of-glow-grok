@@ -1504,11 +1504,11 @@ export class LevelScene extends Phaser.Scene {
   private sparkNewThread(socket: { x: number; y: number }): void {
     for (const thread of lanternThreads(this.sockets, this.requiredSockets())) {
       if (thread.to !== socket && thread.from !== socket) continue;
-      const steps = 7;
+      const steps = 5;
       for (let i = 1; i <= steps; i += 1) {
         const t = i / steps;
         this.trail.explode(
-          4,
+          2,
           thread.from.x + (thread.to.x - thread.from.x) * t,
           thread.from.y + (thread.to.y - thread.from.y) * t,
         );
