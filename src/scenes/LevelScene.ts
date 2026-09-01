@@ -188,6 +188,7 @@ export class LevelScene extends Phaser.Scene {
   private socketRing!: Phaser.GameObjects.Graphics;
   private hangingStone: Array<{ img: Phaser.GameObjects.Image; base: number }> = [];
   private risingStone: Phaser.GameObjects.Image[] = [];
+  private waterMark?: Phaser.GameObjects.Graphics;
 
   private collected = 0;
   /** Motes actually placed this level - derived from the data used, never assumed from config. */
@@ -246,6 +247,7 @@ export class LevelScene extends Phaser.Scene {
     this.planted = 0;
     this.hangingStone = [];
     this.risingStone = [];
+    this.waterMark = undefined;
     this.target.set(START_X, START_Y);
   }
 
@@ -616,6 +618,7 @@ export class LevelScene extends Phaser.Scene {
       blendMode: Phaser.BlendModes.ADD,
     });
     mist.setDepth(-6);
+    this.waterMark = this.add.graphics().setDepth(-8);
 
     // Rising stone in the lake: Light2D so a planted lantern is what makes
     // the pool's pillars appear. The vault stays unlit silhouettes on purpose.
@@ -1188,6 +1191,24 @@ export class LevelScene extends Phaser.Scene {
     this.warmCave();
   }
 
+  /** Unstill water is marked. A lantern or its thread leaves a quiet gap — the pool that holds you is visible before you step in. */
+  private drawWater(time: number): void {
+    if (!this.waterMark || !this.isHollow()) return;
+    this.waterMark.clear();
+    const shift = (time * 0.014) % 42;
+    this.waterMark.lineStyle(1.3, 0x8aa0b4, 0.2);
+    for (let row = 0; row < 7; row += 1) {
+      const y = WATER_Y + 18 + row * 20;
+      const dir = row % 2 === 0 ? 1 : -1;
+      for (let x = -50 + shift * dir; x < WORLD_WIDTH + 50; x += 38) {
+        const mid = { x: x + 8, y };
+        if (pointInLanternHaven(mid, this.sockets)) continue;
+        if (nearLanternThread(mid, this.sockets, undefined, this.requiredSockets())) continue;
+        this.waterMark.lineBetween(x, y, x + 15, y);
+      }
+    }
+  }
+
   /** Nearby hanging stone catches lantern gold without Light2D (that swallowed the vault). */
   private warmCave(): void {
     const lit = this.sockets.filter((s) => s.lit);
@@ -1366,6 +1387,7 @@ export class LevelScene extends Phaser.Scene {
 
     this.drawReachRing(time);
     this.drawSockets(time);
+    this.drawWater(time);
     this.breatheLanterns(time);
     this.inviteGather();
 
