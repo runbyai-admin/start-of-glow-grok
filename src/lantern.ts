@@ -71,15 +71,25 @@ export function lanternHaven(point: SocketPoint, sockets: LitSocket[]): boolean 
 }
 
 /** Below the waterline and outside every planted pool or lamp-road: the water still holds. */
-export function inUnstillWater(point: SocketPoint, sockets: LitSocket[], waterY = WATER_Y): boolean {
+export function inUnstillWater(
+  point: SocketPoint,
+  sockets: LitSocket[],
+  waterY = WATER_Y,
+  roadCount = sockets.length,
+): boolean {
   if (point.y <= waterY) return false;
   if (lanternHaven(point, sockets)) return false;
-  if (nearLanternThread(point, sockets)) return false;
+  if (nearLanternThread(point, sockets, THREAD_RADIUS, roadCount)) return false;
   return true;
 }
 
-export function waterSpeedScale(point: SocketPoint, sockets: LitSocket[], waterY = WATER_Y): number {
-  return inUnstillWater(point, sockets, waterY) ? WATER_SPEED_SCALE : 1;
+export function waterSpeedScale(
+  point: SocketPoint,
+  sockets: LitSocket[],
+  waterY = WATER_Y,
+  roadCount = sockets.length,
+): number {
+  return inUnstillWater(point, sockets, waterY, roadCount) ? WATER_SPEED_SCALE : 1;
 }
 
 export const THREAD_RADIUS = 52;
@@ -94,19 +104,46 @@ export function distToSegment(point: SocketPoint, a: SocketPoint, b: SocketPoint
   return Math.hypot(point.x - (a.x + dx * t), point.y - (a.y + dy * t));
 }
 
-/** Consecutive sockets in layout order: a standing road once both are lit, a guide to the next cold one. */
-export function lanternThreads(sockets: LitSocket[]): Array<{ from: LitSocket; to: LitSocket; lit: boolean }> {
+/**
+ * The first `roadCount` sockets are the heart road. Optional sockets after
+ * that hang off the nearest lit road lamp, so a fifth plant does not throw a
+ * thread backwards across the cave.
+ */
+export function lanternThreads(
+  sockets: LitSocket[],
+  roadCount = sockets.length,
+): Array<{ from: LitSocket; to: LitSocket; lit: boolean }> {
   const threads: Array<{ from: LitSocket; to: LitSocket; lit: boolean }> = [];
-  for (let i = 0; i < sockets.length - 1; i += 1) {
+  const road = Math.max(0, Math.min(roadCount, sockets.length));
+  for (let i = 0; i < road - 1; i += 1) {
     if (!sockets[i].lit) continue;
     threads.push({ from: sockets[i], to: sockets[i + 1], lit: sockets[i + 1].lit });
     if (!sockets[i + 1].lit) break;
   }
+  const litRoad = sockets.slice(0, road).filter((s) => s.lit);
+  for (let i = road; i < sockets.length; i += 1) {
+    if (litRoad.length === 0) continue;
+    let nearest = litRoad[0];
+    let best = Math.hypot(sockets[i].x - nearest.x, sockets[i].y - nearest.y);
+    for (const lamp of litRoad) {
+      const d = Math.hypot(sockets[i].x - lamp.x, sockets[i].y - lamp.y);
+      if (d < best) {
+        nearest = lamp;
+        best = d;
+      }
+    }
+    threads.push({ from: nearest, to: sockets[i], lit: sockets[i].lit });
+  }
   return threads;
 }
 
-export function nearLanternThread(point: SocketPoint, sockets: LitSocket[], radius = THREAD_RADIUS): boolean {
-  for (const thread of lanternThreads(sockets)) {
+export function nearLanternThread(
+  point: SocketPoint,
+  sockets: LitSocket[],
+  radius = THREAD_RADIUS,
+  roadCount = sockets.length,
+): boolean {
+  for (const thread of lanternThreads(sockets, roadCount)) {
     if (distToSegment(point, thread.from, thread.to) <= radius) return true;
   }
   return false;

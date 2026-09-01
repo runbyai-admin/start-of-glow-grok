@@ -93,3 +93,20 @@ test("two planted lanterns keep a standing road of light", () => {
   assert.equal(threads[0].lit, true);
   assert.equal(threads[1].lit, false);
 });
+
+test("optional sockets hang off the nearest road lamp, not the last heart socket", () => {
+  const sockets = [
+    { x: 290, y: 450, lit: true },
+    { x: 760, y: 470, lit: true },
+    { x: 1140, y: 400, lit: true },
+    { x: 1580, y: 290, lit: true },
+    { x: 2000, y: 250, lit: true },
+    { x: 800, y: 130, lit: false },
+    { x: 1360, y: 660, lit: false },
+  ];
+  const threads = lanternThreads(sockets, 5);
+  assert.equal(threads.length, 6);
+  const optional = threads.slice(4);
+  assert.equal(optional[0].from.x, 760);
+  assert.equal(optional[1].from.x, 1140);
+});

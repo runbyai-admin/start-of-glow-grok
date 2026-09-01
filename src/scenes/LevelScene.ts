@@ -1148,7 +1148,7 @@ export class LevelScene extends Phaser.Scene {
     if (this.sockets.length === 0 || this.locked) return;
     const kindled = reachReady(this.reach);
     const havenR = lanternHavenRadius();
-    for (const thread of lanternThreads(this.sockets)) {
+    for (const thread of lanternThreads(this.sockets, this.requiredSockets())) {
       this.socketRing.lineStyle(thread.lit ? 4 : 2.5, thread.lit ? 0xffe2a8 : 0xffd089, thread.lit ? 0.72 : 0.42 + Math.sin(time * 0.006) * 0.12);
       this.socketRing.lineBetween(thread.from.x, thread.from.y, thread.to.x, thread.to.y);
     }
@@ -1206,7 +1206,7 @@ export class LevelScene extends Phaser.Scene {
 
     const dt = delta / 1000;
     const here = { x: this.wisp.x, y: this.wisp.y };
-    const drag = this.isHollow() ? waterSpeedScale(here, this.sockets) : 1;
+    const drag = this.isHollow() ? waterSpeedScale(here, this.sockets, WATER_Y, this.requiredSockets()) : 1;
     const step = dt * WISP_MAX_SPEED * drag;
     if (this.cursors.left.isDown || this.wasd.left.isDown) this.target.x -= step;
     if (this.cursors.right.isDown || this.wasd.right.isDown) this.target.x += step;
@@ -1242,7 +1242,7 @@ export class LevelScene extends Phaser.Scene {
     this.wisp.x += dx;
     this.wisp.y += dy;
     this.wispLight.setPosition(this.wisp.x, this.wisp.y);
-    if (this.isHollow() && inUnstillWater({ x: this.wisp.x, y: this.wisp.y }, this.sockets)) {
+    if (this.isHollow() && inUnstillWater({ x: this.wisp.x, y: this.wisp.y }, this.sockets, WATER_Y, this.requiredSockets())) {
       this.wisp.setTint(0xa8d4ec);
     } else {
       this.wisp.clearTint();
@@ -1482,7 +1482,8 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private lanternHaven(x: number, y: number): boolean {
-    return pointInLanternHaven({ x, y }, this.sockets) || nearLanternThread({ x, y }, this.sockets);
+    return pointInLanternHaven({ x, y }, this.sockets)
+      || nearLanternThread({ x, y }, this.sockets, undefined, this.requiredSockets());
   }
 
   /** A planted lantern washes any shadow standing in its pool into light. */
