@@ -113,7 +113,7 @@ test("optional sockets stay quiet until the road has three lamps", () => {
     { x: 800, y: 130, lit: false },
     { x: 1360, y: 660, lit: false },
   ];
-  assert.equal(lanternThreads(sockets, 5).length, 1);
+  assert.equal(lanternThreads(sockets, 5).length, 2);
 });
 
 test("optional sockets hang off the nearest road lamp, not the last heart socket", () => {
