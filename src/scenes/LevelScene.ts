@@ -766,7 +766,12 @@ export class LevelScene extends Phaser.Scene {
     this.inviteShown += 1;
     const teachAt = this.isHollow() ? 1 : 3;
     if (this.inviteShown === teachAt && (this.config.index === 1 || this.isHollow()) && this.reachLine) {
-      this.tweens.add({ targets: this.reachLine, alpha: { from: 0, to: 0.75 }, duration: 700, ease: "Sine.easeInOut" });
+      this.tweens.add({
+        targets: this.reachLine,
+        alpha: { from: 0, to: this.isHollow() ? 0.92 : 0.75 },
+        duration: 700,
+        ease: "Sine.easeInOut",
+      });
     }
   }
 
