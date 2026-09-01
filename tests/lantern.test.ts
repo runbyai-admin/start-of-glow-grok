@@ -6,7 +6,9 @@ import {
   WATER_Y,
   inUnstillWater,
   lanternHaven,
+  lanternThreads,
   nearestUnlitSocket,
+  nearLanternThread,
   requiredLanterns,
   socketInRange,
   SOCKET_RADIUS,
@@ -66,4 +68,28 @@ test("a planted lantern's pool is a haven", () => {
   ];
   assert.equal(lanternHaven({ x: 300, y: 440 }, sockets), true);
   assert.equal(lanternHaven({ x: 760, y: 470 }, sockets), false);
+});
+
+test("a planted lantern throws a guide thread to the next cold socket", () => {
+  const sockets = [
+    { x: 400, y: 450, lit: true },
+    { x: 400, y: 660, lit: false },
+  ];
+  const threads = lanternThreads(sockets);
+  assert.equal(threads.length, 1);
+  assert.equal(threads[0].lit, false);
+  assert.equal(nearLanternThread({ x: 400, y: 520 }, sockets), true);
+  assert.equal(inUnstillWater({ x: 400, y: WATER_Y + 10 }, sockets), false);
+});
+
+test("two planted lanterns keep a standing road of light", () => {
+  const sockets = [
+    { x: 290, y: 450, lit: true },
+    { x: 760, y: 470, lit: true },
+    { x: 1140, y: 400, lit: false },
+  ];
+  const threads = lanternThreads(sockets);
+  assert.equal(threads.length, 2);
+  assert.equal(threads[0].lit, true);
+  assert.equal(threads[1].lit, false);
 });

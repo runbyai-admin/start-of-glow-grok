@@ -36,7 +36,9 @@ import {
   inUnstillWater,
   lanternHaven as pointInLanternHaven,
   lanternHavenRadius,
+  lanternThreads,
   nearestUnlitSocket,
+  nearLanternThread,
   requiredLanterns,
   waterSpeedScale,
 } from "../lantern";
@@ -1146,6 +1148,10 @@ export class LevelScene extends Phaser.Scene {
     if (this.sockets.length === 0 || this.locked) return;
     const kindled = reachReady(this.reach);
     const havenR = lanternHavenRadius();
+    for (const thread of lanternThreads(this.sockets)) {
+      this.socketRing.lineStyle(thread.lit ? 4 : 2.5, thread.lit ? 0xffe2a8 : 0xffd089, thread.lit ? 0.72 : 0.42 + Math.sin(time * 0.006) * 0.12);
+      this.socketRing.lineBetween(thread.from.x, thread.from.y, thread.to.x, thread.to.y);
+    }
     for (const socket of this.sockets) {
       if (!socket.lit) continue;
       const dy = Math.abs(socket.y - WATER_Y);
@@ -1476,7 +1482,7 @@ export class LevelScene extends Phaser.Scene {
   }
 
   private lanternHaven(x: number, y: number): boolean {
-    return pointInLanternHaven({ x, y }, this.sockets);
+    return pointInLanternHaven({ x, y }, this.sockets) || nearLanternThread({ x, y }, this.sockets);
   }
 
   /** A planted lantern washes any shadow standing in its pool into light. */

@@ -70,12 +70,44 @@ export function lanternHaven(point: SocketPoint, sockets: LitSocket[]): boolean 
   return false;
 }
 
-/** Below the waterline and outside every planted pool: the water still holds. */
+/** Below the waterline and outside every planted pool or lamp-road: the water still holds. */
 export function inUnstillWater(point: SocketPoint, sockets: LitSocket[], waterY = WATER_Y): boolean {
   if (point.y <= waterY) return false;
-  return !lanternHaven(point, sockets);
+  if (lanternHaven(point, sockets)) return false;
+  if (nearLanternThread(point, sockets)) return false;
+  return true;
 }
 
 export function waterSpeedScale(point: SocketPoint, sockets: LitSocket[], waterY = WATER_Y): number {
   return inUnstillWater(point, sockets, waterY) ? WATER_SPEED_SCALE : 1;
+}
+
+export const THREAD_RADIUS = 52;
+
+export function distToSegment(point: SocketPoint, a: SocketPoint, b: SocketPoint): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lengthSquared = dx * dx + dy * dy;
+  const t = lengthSquared === 0
+    ? 0
+    : Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared));
+  return Math.hypot(point.x - (a.x + dx * t), point.y - (a.y + dy * t));
+}
+
+/** Consecutive sockets in layout order: a standing road once both are lit, a guide to the next cold one. */
+export function lanternThreads(sockets: LitSocket[]): Array<{ from: LitSocket; to: LitSocket; lit: boolean }> {
+  const threads: Array<{ from: LitSocket; to: LitSocket; lit: boolean }> = [];
+  for (let i = 0; i < sockets.length - 1; i += 1) {
+    if (!sockets[i].lit) continue;
+    threads.push({ from: sockets[i], to: sockets[i + 1], lit: sockets[i + 1].lit });
+    if (!sockets[i + 1].lit) break;
+  }
+  return threads;
+}
+
+export function nearLanternThread(point: SocketPoint, sockets: LitSocket[], radius = THREAD_RADIUS): boolean {
+  for (const thread of lanternThreads(sockets)) {
+    if (distToSegment(point, thread.from, thread.to) <= radius) return true;
+  }
+  return false;
 }
