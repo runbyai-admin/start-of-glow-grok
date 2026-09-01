@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { LEVEL_1_LAYOUT, LEVEL_2_LAYOUT, LEVEL_3_LAYOUT, LEVEL_4_LAYOUT, type LevelLayout } from "../src/levels.ts";
+import { WATER_Y } from "../src/lantern.ts";
 
 function distanceToSegment(
   point: { x: number; y: number },
@@ -85,18 +86,38 @@ test("level 3 has a sixteen-mote safe detour and six paid-gate choices", () => {
 });
 
 test("the hollow keeps a ten-mote kindling road and four pocket lights", () => {
-  assertRouteContract(LEVEL_4_LAYOUT, 10, 4, 3);
+  const layout = LEVEL_4_LAYOUT;
+  assert.equal(layout.motes.length, 14);
+  assert.equal(layout.hazards.length, 3);
+  const kindling = layout.motes.slice(0, 10);
+  for (const [index, mote] of kindling.entries()) {
+    const near = layout.hazards.some((loop) =>
+      loop.some((start, waypoint) => distanceToSegment(mote, start, loop[(waypoint + 1) % loop.length]) < 90),
+    );
+    assert.equal(near, false, `kindling mote ${index + 1} sits inside a patrol`);
+  }
+  const risky = layout.motes.slice(10).filter((mote) =>
+    layout.hazards.some((loop) =>
+      loop.some((start, waypoint) => distanceToSegment(mote, start, loop[(waypoint + 1) % loop.length]) < 90),
+    ),
+  );
+  assert.equal(risky.length, 4);
 });
 
-test("the hollow plants five safe sockets and two pocket ones", () => {
+test("the hollow plants five road sockets, the third in still water, and two pocket ones", () => {
   const sockets = LEVEL_4_LAYOUT.sockets ?? [];
   assert.equal(sockets.length, 7);
-  const start = { x: 220, y: 446 };
+  assert.ok(sockets[2].y > WATER_Y, "the third heart socket must sit in the lake");
+  assert.ok(sockets[0].y < WATER_Y && sockets[1].y < WATER_Y);
+  assert.ok(sockets[3].y < WATER_Y && sockets[4].y < WATER_Y);
   const beacon = { x: 2202, y: 245 };
-  const safe = sockets.slice(0, 5);
-  const route = [start, ...safe, beacon];
-  for (const [index, from] of route.slice(0, -1).entries()) {
-    const to = route[index + 1];
+  const dryLinks: Array<[{ x: number; y: number }, { x: number; y: number }]> = [
+    [{ x: 220, y: 446 }, sockets[0]],
+    [sockets[0], sockets[1]],
+    [sockets[3], sockets[4]],
+    [sockets[4], beacon],
+  ];
+  for (const [index, [from, to]] of dryLinks.entries()) {
     const clearance = Math.min(
       ...LEVEL_4_LAYOUT.hazards.flatMap((loop) =>
         loop.map((hazardStart, waypoint) =>
@@ -104,7 +125,7 @@ test("the hollow plants five safe sockets and two pocket ones", () => {
         ),
       ),
     );
-    assert.ok(clearance >= 200, `socket link ${index + 1}-${index + 2} has only ${clearance.toFixed(1)}px clearance`);
+    assert.ok(clearance >= 200, `dry socket link ${index + 1} has only ${clearance.toFixed(1)}px clearance`);
   }
   const risky = sockets.slice(5).filter((socket) =>
     LEVEL_4_LAYOUT.hazards.some((loop) =>

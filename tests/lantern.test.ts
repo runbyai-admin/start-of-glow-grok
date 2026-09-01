@@ -120,8 +120,8 @@ test("optional sockets hang off the nearest road lamp, not the last heart socket
   const sockets = [
     { x: 290, y: 450, lit: true },
     { x: 760, y: 470, lit: true },
-    { x: 1140, y: 400, lit: true },
-    { x: 1580, y: 290, lit: true },
+    { x: 980, y: 640, lit: true },
+    { x: 1340, y: 280, lit: true },
     { x: 2000, y: 250, lit: true },
     { x: 800, y: 130, lit: false },
     { x: 1360, y: 660, lit: false },
@@ -130,5 +130,22 @@ test("optional sockets hang off the nearest road lamp, not the last heart socket
   assert.equal(threads.length, 6); // 4 road + 2 optional once the road is lit
   const optional = threads.slice(4);
   assert.equal(optional[0].from.x, 760);
-  assert.equal(optional[1].from.x, 1140);
+  assert.equal(optional[1].from.x, 980);
+});
+
+test("the third heart socket sits in still water, and the thread from the second lamp stills the crossing", () => {
+  const sockets = [
+    { x: 290, y: 450, lit: true },
+    { x: 760, y: 470, lit: true },
+    { x: 980, y: 640, lit: false },
+    { x: 1340, y: 280, lit: false },
+    { x: 2000, y: 250, lit: false },
+  ];
+  assert.ok(sockets[2].y > WATER_Y);
+  assert.equal(inUnstillWater({ x: 980, y: 640 }, sockets, WATER_Y, 5), false);
+  assert.equal(inUnstillWater({ x: 980, y: 710 }, sockets, WATER_Y, 5), true);
+  assert.equal(waterSpeedScale({ x: 870, y: 580 }, sockets, WATER_Y, 5), 1);
+  sockets[2].lit = true;
+  assert.equal(waterSpeedScale({ x: 870, y: 580 }, sockets, WATER_Y, 5), 1.14);
+  assert.equal(inUnstillWater({ x: 980, y: 710 }, sockets, WATER_Y, 5), false);
 });

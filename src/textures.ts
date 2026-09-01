@@ -266,6 +266,40 @@ export function makeLanternTexture(scene: Phaser.Scene, key: string): void {
   });
 }
 
+/** Rising stone: wide at the floor, tapering to a point. The water's standing lamps. */
+export function makeStalagmiteTexture(
+  scene: Phaser.Scene,
+  key: string,
+  width: number,
+  height: number,
+  seed: number,
+): void {
+  makeCanvasTexture(scene, key, width, height, (ctx) => {
+    const rng = new Phaser.Math.RandomDataGenerator([String(seed)]);
+    ctx.fillStyle = "#ffffff";
+    const top = width / 2;
+    ctx.beginPath();
+    ctx.moveTo(width * 0.04, height);
+    ctx.lineTo(width * 0.96, height);
+    const lumps = rng.between(4, 6);
+    for (let i = 1; i <= lumps; i += 1) {
+      const t = i / lumps;
+      const y = height * (1 - t);
+      const half = width * 0.46 * (1 - t * 0.94) * rng.realInRange(0.78, 1.12);
+      ctx.lineTo(top + half, y);
+    }
+    ctx.lineTo(top, 0);
+    for (let i = lumps; i >= 1; i -= 1) {
+      const t = i / lumps;
+      const y = height * (1 - t);
+      const half = width * 0.46 * (1 - t * 0.94) * rng.realInRange(0.78, 1.12);
+      ctx.lineTo(top - half, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  });
+}
+
 /** Hanging stone: wide at the vault, tapering to a point. No branches. */
 export function makeStalactiteTexture(
   scene: Phaser.Scene,

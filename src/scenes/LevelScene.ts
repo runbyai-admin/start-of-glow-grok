@@ -11,6 +11,7 @@ import {
   makeSkyTexture,
   makeSocketTexture,
   makeStalactiteTexture,
+  makeStalagmiteTexture,
   makeTreeTexture,
 } from "../textures";
 import type { Ambience } from "../audio";
@@ -31,8 +32,10 @@ import {
   HOLLOW_TOUCH_RESTORE,
   LANTERN_LIGHT_INTENSITY,
   LANTERN_LIGHT_RADIUS,
+  THREAD_RADIUS,
   WATER_SINK_SCALE,
   WATER_Y,
+  distToSegment,
   inUnstillWater,
   lanternHaven as pointInLanternHaven,
   lanternHavenRadius,
@@ -183,6 +186,8 @@ export class LevelScene extends Phaser.Scene {
   }> = [];
   private planted = 0;
   private socketRing!: Phaser.GameObjects.Graphics;
+  private hangingStone: Array<{ img: Phaser.GameObjects.Image; base: number }> = [];
+  private risingStone: Phaser.GameObjects.Image[] = [];
 
   private collected = 0;
   /** Motes actually placed this level - derived from the data used, never assumed from config. */
@@ -239,6 +244,8 @@ export class LevelScene extends Phaser.Scene {
     this.hazards = [];
     this.sockets = [];
     this.planted = 0;
+    this.hangingStone = [];
+    this.risingStone = [];
     this.target.set(START_X, START_Y);
   }
 
@@ -261,6 +268,7 @@ export class LevelScene extends Phaser.Scene {
     for (let i = 0; i < 4; i += 1) {
       makeTreeTexture(this, `tree-${i}`, 240, 560, i + 1);
       makeStalactiteTexture(this, `stalactite-${i}`, 90 + i * 18, 220 + i * 50, i + 11);
+      makeStalagmiteTexture(this, `stalagmite-${i}`, 70 + i * 14, 160 + i * 36, i + 23);
     }
   }
 
@@ -314,12 +322,14 @@ export class LevelScene extends Phaser.Scene {
       this.add.image(0, 0, "cave-ceiling").setOrigin(0, 0).setTint(0x161018).setDepth(-32);
       for (let i = 0; i < 16; i += 1) {
         const x = 50 + (i / 15) * (WORLD_WIDTH - 100) + rng.between(-28, 28);
-        this.add
+        const base = [0x2a2436, 0x221c2c, 0x1c1826][rng.between(0, 2)];
+        const img = this.add
           .image(x, -8, `stalactite-${i % 4}`)
           .setOrigin(0.5, 0)
           .setScale(rng.realInRange(0.85, 1.35))
-          .setTint([0x2a2436, 0x221c2c, 0x1c1826][rng.between(0, 2)])
+          .setTint(base)
           .setDepth(-30);
+        this.hangingStone.push({ img, base });
       }
     } else {
       for (let i = 0; i < TREE_COUNT; i += 1) {
@@ -606,6 +616,21 @@ export class LevelScene extends Phaser.Scene {
       blendMode: Phaser.BlendModes.ADD,
     });
     mist.setDepth(-6);
+
+    // Rising stone in the lake: Light2D so a planted lantern is what makes
+    // the pool's pillars appear. The vault stays unlit silhouettes on purpose.
+    const stoneRng = new Phaser.Math.RandomDataGenerator(["start-of-glow-hollow-rise"]);
+    const columns = [170, 430, 640, 900, 1240, 1490, 1730, 1980, 2260, 2470];
+    for (let i = 0; i < columns.length; i += 1) {
+      const img = this.add
+        .image(columns[i] + stoneRng.between(-18, 18), WORLD_HEIGHT + 6, `stalagmite-${i % 4}`)
+        .setOrigin(0.5, 1)
+        .setScale(stoneRng.realInRange(0.7, 1.15))
+        .setTint(0x1a2430)
+        .setDepth(-7);
+      img.setPipeline("Light2D");
+      this.risingStone.push(img);
+    }
   }
 
   private buildSockets(): void {
@@ -953,6 +978,7 @@ export class LevelScene extends Phaser.Scene {
       this.tweens.add({ targets: reflection, alpha: 0.28, duration: 700, ease: "Sine.easeOut" });
     }
     this.planted += 1;
+    this.target.set(socket.x, socket.y);
     this.sparkNewThread(socket);
     this.washShadows();
     this.showGatherCost();
@@ -1159,6 +1185,48 @@ export class LevelScene extends Phaser.Scene {
       if (!socket.lit || !socket.light) continue;
       socket.light.intensity = LANTERN_LIGHT_INTENSITY + Math.sin(time * 0.0024 + socket.x * 0.01) * 0.28;
     }
+    this.warmCave();
+  }
+
+  /** Nearby hanging stone catches lantern gold without Light2D (that swallowed the vault). */
+  private warmCave(): void {
+    const lit = this.sockets.filter((s) => s.lit);
+    const open = this.levelClear ? 0.4 : 0;
+    for (const stone of this.hangingStone) {
+      let t = open;
+      for (const lamp of lit) {
+        const d = Phaser.Math.Distance.Between(stone.img.x, 80, lamp.x, lamp.y);
+        t = Math.max(t, 1 - d / 560);
+      }
+      t = Phaser.Math.Clamp(t, 0, 1);
+      const ar = (stone.base >> 16) & 0xff;
+      const ag = (stone.base >> 8) & 0xff;
+      const ab = stone.base & 0xff;
+      const r = Math.round(ar + (0xc4 - ar) * t);
+      const g = Math.round(ag + (0x89 - ag) * t);
+      const b = Math.round(ab + (0x4a - ab) * t);
+      stone.img.setTint((r << 16) | (g << 8) | b);
+    }
+    for (const img of this.risingStone) {
+      let t = open;
+      for (const lamp of lit) {
+        const d = Phaser.Math.Distance.Between(img.x, WATER_Y, lamp.x, lamp.y);
+        t = Math.max(t, 1 - d / 420);
+      }
+      img.setAlpha(0.72 + Phaser.Math.Clamp(t, 0, 1) * 0.28);
+    }
+  }
+
+  /** Once the heart is open, a gentle draw along the last lamp toward the crystal. */
+  private heartTide(step: number): void {
+    if (!this.isHollow() || !this.levelClear) return;
+    const dx = this.beacon.x - this.wisp.x;
+    const dy = this.beacon.y - this.wisp.y;
+    const d = Math.hypot(dx, dy);
+    if (d <= 40 || d > 1200) return;
+    const pull = 1.6 * ((1200 - d) / 1200);
+    this.target.x += (dx / d) * step * pull;
+    this.target.y += (dy / d) * step * pull;
   }
 
   private drawSockets(time: number): void {
@@ -1241,15 +1309,23 @@ export class LevelScene extends Phaser.Scene {
 
     const dt = delta / 1000;
     const here = { x: this.wisp.x, y: this.wisp.y };
-    const drag = this.isHollow() ? waterSpeedScale(here, this.sockets, WATER_Y, this.requiredSockets()) : 1;
+    let drag = this.isHollow() ? waterSpeedScale(here, this.sockets, WATER_Y, this.requiredSockets()) : 1;
+    if (this.isHollow() && this.levelClear) {
+      const road = this.sockets.slice(0, this.requiredSockets()).filter((s) => s.lit);
+      const last = road[road.length - 1];
+      if (last && distToSegment(here, last, { x: this.beacon.x, y: this.beacon.y }) <= THREAD_RADIUS) {
+        drag = Math.max(drag, 1.14);
+      }
+    }
     const step = dt * WISP_MAX_SPEED * drag;
     if (this.cursors.left.isDown || this.wasd.left.isDown) this.target.x -= step;
     if (this.cursors.right.isDown || this.wasd.right.isDown) this.target.x += step;
     if (this.cursors.up.isDown || this.wasd.up.isDown) this.target.y -= step;
     if (this.cursors.down.isDown || this.wasd.down.isDown) this.target.y += step;
-    if (this.isHollow() && inUnstillWater(here, this.sockets)) {
+    if (this.isHollow() && inUnstillWater(here, this.sockets, WATER_Y, this.requiredSockets())) {
       this.target.y += step * WATER_SINK_SCALE;
     }
+    this.heartTide(step);
     this.target.x = Phaser.Math.Clamp(this.target.x, 27, WORLD_WIDTH - 27);
     this.target.y = Phaser.Math.Clamp(this.target.y, 27, WORLD_HEIGHT - 27);
 
@@ -1537,6 +1613,21 @@ export class LevelScene extends Phaser.Scene {
     }
   }
 
+  private sparkHeartThread(): void {
+    const road = this.sockets.slice(0, this.requiredSockets()).filter((s) => s.lit);
+    const last = road[road.length - 1];
+    if (!last) return;
+    const steps = 7;
+    for (let i = 1; i <= steps; i += 1) {
+      const t = i / steps;
+      this.trail.explode(
+        3,
+        last.x + (this.beacon.x - last.x) * t,
+        last.y + (this.beacon.y - last.y) * t,
+      );
+    }
+  }
+
   /** A planted lantern washes any shadow standing in its pool into light. */
   private washShadows(): void {
     for (const hazard of this.hazards) {
@@ -1605,6 +1696,9 @@ export class LevelScene extends Phaser.Scene {
       this.ambience.beaconOpen();
       this.showOpenLine();
       this.beaconPulse(1.12);
+      this.lights.setAmbientColor(0x1c1412);
+      this.cameras.main.setBackgroundColor(0x0c0808);
+      this.sparkHeartThread();
     }
 
     if (this.planted >= this.sockets.length && this.collected >= this.totalMotes && !this.flawlessNow) {

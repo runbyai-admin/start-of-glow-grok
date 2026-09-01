@@ -208,23 +208,22 @@ export const LEVEL_3_LAYOUT: LevelLayout = {
 };
 
 /**
- * Level 4 is a different place, not a harder forest. Three low shadow pockets
- * leave a dry mid-height road. Five sockets sit on that road; two more sit
- * inside the first two pockets. Ten motes kindle the next plant along the
- * road; four more sit with the optional sockets. The heart opens on five
- * lanterns. A spent wisp has to walk the motes; a kindled one can plant.
+ * Level 4 is a different place, not a harder forest. The first two sockets
+ * sit on dry stone; the third sits in the still lake so the road has to still
+ * a pool. Two more climb to the heart. Optional sockets sit in a high pocket
+ * and in the deep water. Ten motes kindle the next plant; four more sit with
+ * the optional sockets. The heart opens on five lanterns.
  */
 export const LEVEL_4_LAYOUT: LevelLayout = {
   motes: [
-    // Two kindling lights between each required socket, on the dry road.
     { x: 400, y: 458 },
     { x: 580, y: 462 },
-    { x: 880, y: 470 },
-    { x: 1020, y: 420 },
-    { x: 1260, y: 360 },
-    { x: 1420, y: 320 },
-    { x: 1700, y: 280 },
-    { x: 1860, y: 260 },
+    { x: 830, y: 520 },
+    { x: 910, y: 575 },
+    { x: 1100, y: 520 },
+    { x: 1220, y: 400 },
+    { x: 1500, y: 270 },
+    { x: 1760, y: 260 },
     { x: 2120, y: 270 },
     { x: 2240, y: 280 },
     { x: 780, y: 140 },
@@ -252,8 +251,8 @@ export const LEVEL_4_LAYOUT: LevelLayout = {
   sockets: [
     { x: 290, y: 450 },
     { x: 760, y: 470 },
-    { x: 1140, y: 400 },
-    { x: 1580, y: 290 },
+    { x: 980, y: 640 },
+    { x: 1340, y: 280 },
     { x: 2000, y: 250 },
     { x: 800, y: 130 },
     { x: 1360, y: 660 },

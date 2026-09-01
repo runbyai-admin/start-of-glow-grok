@@ -17,9 +17,9 @@ export const WATER_Y = 560;
 /** Fraction of walk speed left in unstilled water. */
 export const WATER_SPEED_SCALE = 0.36;
 /** Extra downward drift in unstilled water, as a fraction of the step. */
-export const WATER_SINK_SCALE = 0.42;
+export const WATER_SINK_SCALE = 0.28;
 /** How far a planted lantern stills water and washes shadows. */
-export const LANTERN_HAVEN_SCALE = 0.62;
+export const LANTERN_HAVEN_SCALE = 0.7;
 
 export interface SocketPoint {
   x: number;
@@ -95,7 +95,7 @@ export function waterSpeedScale(
   return inUnstillWater(point, sockets, waterY, roadCount) ? WATER_SPEED_SCALE : 1;
 }
 
-export const THREAD_RADIUS = 52;
+export const THREAD_RADIUS = 64;
 
 export function distToSegment(point: SocketPoint, a: SocketPoint, b: SocketPoint): number {
   const dx = b.x - a.x;
