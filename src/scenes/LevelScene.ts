@@ -948,6 +948,7 @@ export class LevelScene extends Phaser.Scene {
       this.tweens.add({ targets: reflection, alpha: 0.28, duration: 700, ease: "Sine.easeOut" });
     }
     this.planted += 1;
+    this.sparkNewThread(socket);
     this.washShadows();
     this.showGatherCost();
     this.grow();
@@ -1489,6 +1490,22 @@ export class LevelScene extends Phaser.Scene {
   private lanternHaven(x: number, y: number): boolean {
     return pointInLanternHaven({ x, y }, this.sockets)
       || nearLanternThread({ x, y }, this.sockets, undefined, this.requiredSockets());
+  }
+
+  /** Sparks along the new gold thread so the road appearing is a moment. */
+  private sparkNewThread(socket: { x: number; y: number }): void {
+    for (const thread of lanternThreads(this.sockets, this.requiredSockets())) {
+      if (thread.to !== socket && thread.from !== socket) continue;
+      const steps = 7;
+      for (let i = 1; i <= steps; i += 1) {
+        const t = i / steps;
+        this.trail.explode(
+          4,
+          thread.from.x + (thread.to.x - thread.from.x) * t,
+          thread.from.y + (thread.to.y - thread.from.y) * t,
+        );
+      }
+    }
   }
 
   /** A planted lantern washes any shadow standing in its pool into light. */
