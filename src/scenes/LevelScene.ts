@@ -1109,8 +1109,12 @@ export class LevelScene extends Phaser.Scene {
     const invite = inReach && !this.taught ? 0.18 + Math.sin(time * 0.006) * 0.12 : 0;
     const alpha = (inReach ? (ready && kindled ? 0.42 : 0.16) : 0.06) + invite;
     const reachColor = kindled ? 0xffe2a8 : 0x8fb4d8;
-    this.reachRing.lineStyle(inReach ? 2 : 1, reachColor, alpha);
-    this.reachRing.strokeCircle(this.wisp.x, this.wisp.y, this.reach);
+    // The hollow's gold road is the verb. A 390px pull circle on top of it
+    // is a second geometry the cave does not need.
+    if (!this.isHollow()) {
+      this.reachRing.lineStyle(inReach ? 2 : 1, reachColor, alpha);
+      this.reachRing.strokeCircle(this.wisp.x, this.wisp.y, this.reach);
+    }
 
     // The close halo is the hand-readable resource: complete gold means the
     // pull is ready; a spent blue arc fills only as the player moves through
