@@ -116,7 +116,7 @@ export class EndingScene extends Phaser.Scene {
       }
     }
 
-    const line = this.add
+    this.add
       .text(
         VIEW_WIDTH / 2,
         VIEW_HEIGHT * 0.72,
@@ -127,9 +127,8 @@ export class EndingScene extends Phaser.Scene {
         color: "#fff6e0",
       })
       .setOrigin(0.5)
-      .setAlpha(0)
+      .setAlpha(0.92)
       .setDepth(20);
-    this.tweens.add({ targets: line, alpha: 0.92, duration: 1400, delay: 1800, ease: "Sine.easeOut" });
 
     // Only worth a line when it happened - a run that skipped motes gets no
     // scolding, just the resets line it would have gotten anyway.
