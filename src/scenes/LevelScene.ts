@@ -824,8 +824,8 @@ export class LevelScene extends Phaser.Scene {
           this.isHollow() ? "press · leave a light" : "press · draw the light in",
           {
           fontFamily: "Georgia, 'Times New Roman', serif",
-          fontSize: "17px",
-          color: "#ffd9a0",
+          fontSize: this.isHollow() ? "19px" : "17px",
+          color: this.isHollow() ? "#fff3d6" : "#ffd9a0",
         })
         .setOrigin(0.5)
         .setAlpha(0)
