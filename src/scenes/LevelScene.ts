@@ -763,7 +763,8 @@ export class LevelScene extends Phaser.Scene {
     // Words are the fallback, not the lesson: only after the wordless version
     // has played three times unanswered, and only on the first level.
     this.inviteShown += 1;
-    if (this.inviteShown === 3 && (this.config.index === 1 || this.isHollow()) && this.reachLine) {
+    const teachAt = this.isHollow() ? 1 : 3;
+    if (this.inviteShown === teachAt && (this.config.index === 1 || this.isHollow()) && this.reachLine) {
       this.tweens.add({ targets: this.reachLine, alpha: { from: 0, to: 0.75 }, duration: 700, ease: "Sine.easeInOut" });
     }
   }
