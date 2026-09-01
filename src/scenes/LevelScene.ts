@@ -941,7 +941,6 @@ export class LevelScene extends Phaser.Scene {
     }
 
     this.setReach(spendReach(this.reach));
-    this.gatherWave(90, 1);
     this.ambience.plant();
     this.pulseBoost = 1.1;
 
@@ -980,6 +979,7 @@ export class LevelScene extends Phaser.Scene {
     this.planted += 1;
     this.target.set(socket.x, socket.y);
     this.sparkNewThread(socket);
+    this.stillPool(socket);
     this.washShadows();
     this.showGatherCost();
     this.grow();
@@ -1224,7 +1224,7 @@ export class LevelScene extends Phaser.Scene {
     const dy = this.beacon.y - this.wisp.y;
     const d = Math.hypot(dx, dy);
     if (d <= 40 || d > 1200) return;
-    const pull = 1.6 * ((1200 - d) / 1200);
+    const pull = 2.2 * ((1200 - d) / 1200);
     this.target.x += (dx / d) * step * pull;
     this.target.y += (dy / d) * step * pull;
   }
@@ -1613,6 +1613,25 @@ export class LevelScene extends Phaser.Scene {
     }
   }
 
+  /** A plant in or near the lake throws a ripple — the pool going still is a moment. */
+  private stillPool(socket: { x: number; y: number }): void {
+    if (socket.y < WATER_Y - 80) return;
+    const ring = this.add
+      .ellipse(socket.x, WATER_Y + 6, 28, 12)
+      .setStrokeStyle(2.5, 0xffe2a8, 0.9)
+      .setFillStyle(0xc8e4ff, 0.12)
+      .setDepth(-6);
+    this.tweens.add({
+      targets: ring,
+      scaleX: 7,
+      scaleY: 3.4,
+      alpha: 0,
+      duration: 820,
+      ease: "Cubic.easeOut",
+      onComplete: () => ring.destroy(),
+    });
+  }
+
   private sparkHeartThread(): void {
     const road = this.sockets.slice(0, this.requiredSockets()).filter((s) => s.lit);
     const last = road[road.length - 1];
@@ -1696,8 +1715,9 @@ export class LevelScene extends Phaser.Scene {
       this.ambience.beaconOpen();
       this.showOpenLine();
       this.beaconPulse(1.12);
-      this.lights.setAmbientColor(0x1c1412);
-      this.cameras.main.setBackgroundColor(0x0c0808);
+      this.lights.setAmbientColor(0x2a1c14);
+      this.cameras.main.setBackgroundColor(0x140c0a);
+      this.beaconLight.radius = 420;
       this.sparkHeartThread();
     }
 
