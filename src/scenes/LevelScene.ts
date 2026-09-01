@@ -1158,6 +1158,14 @@ export class LevelScene extends Phaser.Scene {
       this.socketRing.lineStyle(thread.lit ? 4 : 2.5, thread.lit ? 0xffe2a8 : 0xffd089, thread.lit ? 0.72 : 0.42 + Math.sin(time * 0.006) * 0.12);
       this.socketRing.lineBetween(thread.from.x, thread.from.y, thread.to.x, thread.to.y);
     }
+    if (this.levelClear && this.isHollow()) {
+      const road = this.sockets.slice(0, this.requiredSockets()).filter((s) => s.lit);
+      const last = road[road.length - 1];
+      if (last) {
+        this.socketRing.lineStyle(4, 0xffe2a8, 0.8);
+        this.socketRing.lineBetween(last.x, last.y, this.beacon.x, this.beacon.y);
+      }
+    }
     for (const socket of this.sockets) {
       if (!socket.lit) continue;
       const dy = Math.abs(socket.y - WATER_Y);
