@@ -94,6 +94,15 @@ test("two planted lanterns keep a standing road of light", () => {
   assert.equal(threads[1].lit, false);
 });
 
+test("a standing lamp-road carries you a little faster than the dry cave", () => {
+  const sockets = [
+    { x: 290, y: 450, lit: true },
+    { x: 760, y: 470, lit: true },
+  ];
+  assert.equal(waterSpeedScale({ x: 500, y: 460 }, sockets), 1.14);
+  assert.equal(waterSpeedScale({ x: 500, y: 200 }, sockets), 1);
+});
+
 test("optional sockets hang off the nearest road lamp, not the last heart socket", () => {
   const sockets = [
     { x: 290, y: 450, lit: true },

@@ -89,6 +89,9 @@ export function waterSpeedScale(
   waterY = WATER_Y,
   roadCount = sockets.length,
 ): number {
+  for (const thread of lanternThreads(sockets, roadCount)) {
+    if (thread.lit && distToSegment(point, thread.from, thread.to) <= THREAD_RADIUS) return 1.14;
+  }
   return inUnstillWater(point, sockets, waterY, roadCount) ? WATER_SPEED_SCALE : 1;
 }
 
