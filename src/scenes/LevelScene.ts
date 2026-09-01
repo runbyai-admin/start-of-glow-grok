@@ -398,7 +398,7 @@ export class LevelScene extends Phaser.Scene {
       scale: { start: 0.38, end: 0.04 },
       alpha: { start: 0.42, end: 0 },
       quantity: 1,
-      frequency: 160,
+      frequency: 110,
       tint: [0xb7cce0, 0xd4e2ee, 0x9aadc2],
       blendMode: Phaser.BlendModes.ADD,
     });
@@ -1167,8 +1167,8 @@ export class LevelScene extends Phaser.Scene {
       if (socket.lit) continue;
       const near = nearestUnlitSocket({ x: this.wisp.x, y: this.wisp.y }, [socket]) !== undefined;
       const pulse = near && kindled ? 0.55 + Math.sin(time * 0.008) * 0.25 : 0.22;
-      this.socketRing.lineStyle(near && kindled ? 3 : 1.5, near && kindled ? 0xffe2a8 : 0x8a7a58, pulse);
-      this.socketRing.strokeEllipse(socket.x, socket.y + 6, 58, 24);
+      this.socketRing.lineStyle(near && kindled ? 4 : 2, near && kindled ? 0xffe2a8 : 0x8a7a58, pulse);
+      this.socketRing.strokeEllipse(socket.x, socket.y + 6, near && kindled ? 72 : 58, 28);
     }
   }
 
