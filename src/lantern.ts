@@ -7,7 +7,7 @@
  * wisp sinks and drags until a planted lantern stills that pool. Shadows
  * that enter a lantern's pool are washed into light.
  */
-export const SOCKET_RADIUS = 78;
+export const SOCKET_RADIUS = 100;
 export const LANTERN_LIGHT_RADIUS = 360;
 export const LANTERN_LIGHT_INTENSITY = 1.85;
 /** Two walked motes rekindle a plant. The forest still asks for five. */

@@ -35,6 +35,7 @@ import {
   WATER_Y,
   inUnstillWater,
   lanternHaven as pointInLanternHaven,
+  lanternHavenRadius,
   nearestUnlitSocket,
   requiredLanterns,
   waterSpeedScale,
@@ -1130,6 +1131,18 @@ export class LevelScene extends Phaser.Scene {
     this.socketRing.clear();
     if (this.sockets.length === 0 || this.locked) return;
     const kindled = reachReady(this.reach);
+    const havenR = lanternHavenRadius();
+    for (const socket of this.sockets) {
+      if (!socket.lit) continue;
+      const dy = Math.abs(socket.y - WATER_Y);
+      if (dy >= havenR) continue;
+      const half = Math.sqrt(havenR * havenR - dy * dy);
+      const pulse = 0.16 + Math.sin(time * 0.0024 + socket.x * 0.01) * 0.05;
+      this.socketRing.fillStyle(0xc8e4ff, pulse);
+      this.socketRing.fillEllipse(socket.x, WATER_Y + 10, half * 2, 26);
+      this.socketRing.lineStyle(2, 0xffe2a8, 0.32 + pulse);
+      this.socketRing.strokeEllipse(socket.x, WATER_Y, half * 1.7, 16);
+    }
     for (const socket of this.sockets) {
       if (socket.lit) continue;
       const near = nearestUnlitSocket({ x: this.wisp.x, y: this.wisp.y }, [socket]) !== undefined;
@@ -1209,6 +1222,11 @@ export class LevelScene extends Phaser.Scene {
     this.wisp.x += dx;
     this.wisp.y += dy;
     this.wispLight.setPosition(this.wisp.x, this.wisp.y);
+    if (this.isHollow() && inUnstillWater({ x: this.wisp.x, y: this.wisp.y }, this.sockets)) {
+      this.wisp.setTint(0xa8d4ec);
+    } else {
+      this.wisp.clearTint();
+    }
     this.hazardTrail.setPosition(0, 0);
 
     const breathe = Math.sin(time * 0.0007) * 0.12;
