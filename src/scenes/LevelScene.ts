@@ -1153,8 +1153,12 @@ export class LevelScene extends Phaser.Scene {
     // The close halo is the hand-readable resource: complete gold means the
     // pull is ready; a spent blue arc fills only as the player moves through
     // light. It lives on the wisp, not in a detached HUD meter. Once the
-    // hollow's heart is open the lamp-road is the geometry, so the halo goes.
-    if (!(this.isHollow() && this.levelClear)) {
+    // hollow's heart is open — or you are standing on a lamp you just left —
+    // the lantern is the geometry, so the halo goes.
+    const huggingLamp = this.isHollow() && this.sockets.some(
+      (s) => s.lit && Phaser.Math.Distance.Between(s.x, s.y, this.wisp.x, this.wisp.y) < 56,
+    );
+    if (!(this.isHollow() && (this.levelClear || huggingLamp))) {
       this.reachRing.lineStyle(kindled ? 3.5 : 3, reachColor, kindled ? 0.82 : 0.58);
       this.reachRing.beginPath();
       this.reachRing.arc(
