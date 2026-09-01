@@ -812,7 +812,11 @@ export class LevelScene extends Phaser.Scene {
 
     if (this.config.index === 1 || this.isHollow()) {
       this.reachLine = this.add
-        .text(VIEW_WIDTH / 2, VIEW_HEIGHT - 54, this.isHollow() ? "press · leave a light" : "press · draw the light in", {
+        .text(
+          VIEW_WIDTH / 2,
+          this.isHollow() ? WATER_Y - 40 : VIEW_HEIGHT - 54,
+          this.isHollow() ? "press · leave a light" : "press · draw the light in",
+          {
           fontFamily: "Georgia, 'Times New Roman', serif",
           fontSize: "17px",
           color: "#ffd9a0",
