@@ -1642,6 +1642,7 @@ export class LevelScene extends Phaser.Scene {
   /** A plant in or near the lake throws a ripple — the pool going still is a moment. */
   private stillPool(socket: { x: number; y: number }): void {
     if (socket.y < WATER_Y - 80) return;
+    this.ambience.still();
     const ring = this.add
       .ellipse(socket.x, WATER_Y + 6, 28, 12)
       .setStrokeStyle(2.5, 0xffe2a8, 0.9)

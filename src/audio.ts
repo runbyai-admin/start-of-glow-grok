@@ -200,6 +200,33 @@ export class Ambience {
    * A lantern being set down: the gather inhale played in reverse, a warm
    * drop instead of a draw. Short enough that a run of plants still phrases.
    */
+  /** A quiet drip when a lantern stills a pool — water going quiet. */
+  still(): void {
+    if (!this.ctx || !this.master) return;
+    try {
+      const ctx = this.ctx;
+      const master = this.master;
+      const now = ctx.currentTime;
+      const src = ctx.createBufferSource();
+      src.buffer = this.noiseBuffer(ctx);
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(1200, now);
+      filter.frequency.exponentialRampToValueAtTime(280, now + 0.22);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(0.07, now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(master);
+      src.start(now);
+      src.stop(now + 0.34);
+    } catch {
+      /* atmosphere only */
+    }
+  }
+
   plant(): void {
     if (!this.ctx || !this.master) return;
     try {
