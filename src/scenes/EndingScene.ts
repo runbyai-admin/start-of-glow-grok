@@ -108,18 +108,10 @@ export class EndingScene extends Phaser.Scene {
     if (this.lanterns > 0) {
       const count = Math.min(this.lanterns, 7);
       for (let i = 0; i < count; i += 1) {
-        const angle = -Math.PI + (i / Math.max(1, count - 1)) * Math.PI;
-        const x = VIEW_WIDTH / 2 + Math.cos(angle) * 380;
-        const y = VIEW_HEIGHT / 2 + Math.sin(angle) * 150 + 20;
-        const lamp = this.add.image(x, y, "lantern").setScale(0.2).setAlpha(0).setDepth(8);
-        this.tweens.add({
-          targets: lamp,
-          alpha: 1,
-          scale: 1.2,
-          duration: 900,
-          delay: 240 + i * 110,
-          ease: "Sine.easeOut",
-        });
+        const t = count === 1 ? 0.5 : i / (count - 1);
+        const x = 160 + t * (VIEW_WIDTH - 320);
+        const y = VIEW_HEIGHT * 0.46 + Math.sin(t * Math.PI) * -36;
+        this.add.image(x, y, "lantern").setScale(1.15).setDepth(8);
       }
     }
 
