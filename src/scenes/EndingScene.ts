@@ -86,14 +86,14 @@ export class EndingScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: wisp,
-      scale: 5.5,
+      scale: 3.2,
       duration: 4200,
       ease: "Sine.easeOut",
     });
     this.tweens.add({
       targets: light,
-      intensity: 3.4,
-      radius: 1400,
+      intensity: 2.6,
+      radius: 900,
       duration: 4200,
       ease: "Sine.easeOut",
     });
@@ -106,18 +106,19 @@ export class EndingScene extends Phaser.Scene {
     // own closing stats the least readable text in the game (found at the
     // 08-24 judging-day playtest).
     if (this.lanterns > 0) {
-      for (let i = 0; i < Math.min(this.lanterns, 7); i += 1) {
-        const angle = -Math.PI / 2 + (i / Math.max(1, Math.min(this.lanterns, 7) - 1)) * Math.PI;
-        const x = VIEW_WIDTH / 2 + Math.cos(angle) * 220;
-        const y = VIEW_HEIGHT / 2 + Math.sin(angle) * 70 + 40;
-        const lamp = this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, "lantern").setBlendMode(Phaser.BlendModes.ADD).setScale(0.15).setDepth(8);
+      const count = Math.min(this.lanterns, 7);
+      for (let i = 0; i < count; i += 1) {
+        const angle = -Math.PI / 2 + (i / Math.max(1, count - 1)) * Math.PI;
+        const x = VIEW_WIDTH / 2 + Math.cos(angle) * 340;
+        const y = VIEW_HEIGHT / 2 + Math.sin(angle) * 110 + 30;
+        const lamp = this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, "lantern").setScale(0.25).setDepth(8);
         this.tweens.add({
           targets: lamp,
           x,
           y,
-          scale: 0.7,
-          duration: 1800 + i * 90,
-          delay: 400,
+          scale: 1.15,
+          duration: 1600 + i * 80,
+          delay: 280,
           ease: "Sine.easeOut",
         });
       }
@@ -126,17 +127,17 @@ export class EndingScene extends Phaser.Scene {
     const line = this.add
       .text(
         VIEW_WIDTH / 2,
-        VIEW_HEIGHT * 0.78,
+        VIEW_HEIGHT * 0.72,
         this.lanterns > 0 ? "the hollow kept every light you left" : "the forest remembers the light",
         {
         fontFamily: "Georgia, 'Times New Roman', serif",
-        fontSize: "24px",
-        color: "#e7dcc2",
+        fontSize: "26px",
+        color: "#fff6e0",
       })
       .setOrigin(0.5)
       .setAlpha(0)
       .setDepth(20);
-    this.tweens.add({ targets: line, alpha: 0.75, duration: 1400, delay: 2400, ease: "Sine.easeOut" });
+    this.tweens.add({ targets: line, alpha: 0.92, duration: 1400, delay: 1800, ease: "Sine.easeOut" });
 
     // Only worth a line when it happened - a run that skipped motes gets no
     // scolding, just the resets line it would have gotten anyway.

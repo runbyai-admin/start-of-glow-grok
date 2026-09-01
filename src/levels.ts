@@ -217,8 +217,8 @@ export const LEVEL_3_LAYOUT: LevelLayout = {
 export const LEVEL_4_LAYOUT: LevelLayout = {
   motes: [
     // Two kindling lights between each required socket, on the dry road.
-    { x: 400, y: 500 },
-    { x: 580, y: 500 },
+    { x: 400, y: 458 },
+    { x: 580, y: 462 },
     { x: 880, y: 470 },
     { x: 1020, y: 420 },
     { x: 1260, y: 360 },
