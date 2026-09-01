@@ -1174,12 +1174,12 @@ export class LevelScene extends Phaser.Scene {
       if (!socket.lit) continue;
       const dy = Math.abs(socket.y - WATER_Y);
       if (dy >= havenR) continue;
-      const half = Math.sqrt(havenR * havenR - dy * dy);
+      const half = Math.min(110, Math.sqrt(havenR * havenR - dy * dy));
       const pulse = 0.16 + Math.sin(time * 0.0024 + socket.x * 0.01) * 0.05;
       this.socketRing.fillStyle(0xc8e4ff, pulse);
-      this.socketRing.fillEllipse(socket.x, WATER_Y + 10, half * 2, 26);
+      this.socketRing.fillEllipse(socket.x, WATER_Y + 8, half * 2, 18);
       this.socketRing.lineStyle(2, 0xffe2a8, 0.32 + pulse);
-      this.socketRing.strokeEllipse(socket.x, WATER_Y, half * 1.7, 16);
+      this.socketRing.strokeEllipse(socket.x, WATER_Y, half * 1.6, 12);
     }
     for (const socket of this.sockets) {
       if (socket.lit) continue;
