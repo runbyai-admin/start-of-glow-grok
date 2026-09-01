@@ -356,7 +356,7 @@ export class LevelScene extends Phaser.Scene {
   private buildBeacon(): void {
     const key = this.isHollow() ? "heart" : "beacon";
     this.beacon = this.add.image(BEACON_X, BEACON_Y, key).setBlendMode(Phaser.BlendModes.ADD).setDepth(-35).setAlpha(0.05);
-    if (this.isHollow()) this.beacon.setScale(1.45);
+    if (this.isHollow()) this.beacon.setScale(1.7).setAlpha(0.18);
     this.beaconLight = this.lights.addLight(BEACON_X, BEACON_Y, 260, 0xffcf8a, 0);
   }
 
@@ -1707,8 +1707,8 @@ export class LevelScene extends Phaser.Scene {
   private growLanterns(): void {
     const required = this.requiredSockets();
     const progress = required > 0 ? Phaser.Math.Clamp(this.planted / required, 0, 1) : 0;
-    this.beacon.setAlpha(0.05 + progress * 0.8);
-    this.beaconLight.intensity = progress * 1.4;
+    this.beacon.setAlpha(0.18 + progress * 0.82);
+    this.beaconLight.intensity = 0.35 + progress * 1.5;
 
     if (required > 0 && this.planted >= required && !this.levelClear) {
       this.levelClear = true;
