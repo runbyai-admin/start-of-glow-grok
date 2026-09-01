@@ -74,8 +74,9 @@ export class EndingScene extends Phaser.Scene {
 
     this.add.image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, dawn ? "dawn-sky" : "sky").setDepth(-100);
 
+    const sunY = dawn ? VIEW_HEIGHT * 0.62 : VIEW_HEIGHT / 2;
     const wisp = this.add
-      .image(VIEW_WIDTH / 2, VIEW_HEIGHT / 2, "wisp")
+      .image(VIEW_WIDTH / 2, sunY, "wisp")
       .setBlendMode(Phaser.BlendModes.ADD)
       .setScale(0.5)
       .setDepth(10);
@@ -110,7 +111,7 @@ export class EndingScene extends Phaser.Scene {
       for (let i = 0; i < count; i += 1) {
         const t = count === 1 ? 0.5 : i / (count - 1);
         const x = 160 + t * (VIEW_WIDTH - 320);
-        const y = VIEW_HEIGHT * 0.46 + Math.sin(t * Math.PI) * -36;
+        const y = VIEW_HEIGHT * 0.38 + Math.sin(t * Math.PI) * -28;
         this.add.image(x, y, "lantern").setScale(1.15).setDepth(8);
       }
     }
